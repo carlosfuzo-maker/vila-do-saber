@@ -287,6 +287,7 @@ export async function loadProfileSave(profileId: ProfileId): Promise<{
           activeQuest: data.active_quest || null,
           phoneMessages: Array.isArray(data.phone_messages) ? data.phone_messages : [],
           rivalConfig: data.rival_config || null,
+          answeredQuestionIds: Array.isArray(data.answered_question_ids) ? data.answered_question_ids : [],
           updatedAt: data.updated_at || new Date().toISOString(),
         };
 
@@ -366,6 +367,7 @@ export async function saveProfileSave(saveData: RpgSaveData): Promise<{
       active_quest: saveData.activeQuest,
       phone_messages: saveData.phoneMessages,
       rival_config: saveData.rivalConfig,
+      answered_question_ids: saveData.answeredQuestionIds || [],
       updated_at: new Date().toISOString(),
     };
 

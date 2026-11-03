@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS public.rpg_profiles (
   active_quest JSONB DEFAULT NULL,                      -- Missão atual (Papai Carlos/Mamãe Renata)
   phone_messages JSONB NOT NULL DEFAULT '[]'::jsonb,    -- Histórico do PokéCelular
   rival_config JSONB DEFAULT NULL,                      -- Rival Gary e batalhas
+  answered_question_ids JSONB NOT NULL DEFAULT '[]'::jsonb, -- Banco anti-repetição de questões respondidas
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
