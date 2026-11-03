@@ -25,6 +25,10 @@ export function getSupabaseCredentials(): { url: string; anonKey: string; isCust
     }
   }
 
+  if (url) {
+    url = url.trim().replace(/\/rest\/v1\/?.*$/i, "").replace(/\/+$/, "");
+  }
+
   return { url, anonKey, isCustom };
 }
 
