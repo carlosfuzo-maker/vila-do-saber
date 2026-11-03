@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang=en-us>
+<head>
+<meta charset=utf-8>
+<title>Not Found</title>
+<meta name=viewport content="width=device-width,initial-scale=1">
+<link rel=stylesheet href=/main.css>
+</head>
+<body>
+<div class="Sticky ContentBG OnTop">
+<header>
+<div id=Head1>
+<button id=MenuBtn title="Toggle navigation menu.">
+<img id=MenuImg src=/files/icons/hamburger.webp width=20 height=20 alt="Menu icon.">
+</button>
+<div id=SiteName>
+<a href=/ >Better<img id=SiteIcon src=/files/icons/better-vgmaps.webp width=16 height=16 alt="Icon for the website Better VGMaps.">VGMaps</a>
+</div>
+</div>
+<nav>
+<div class=NavBox>
+<a href=/maps/ >Explore Maps</a>
+</div>
+<div class=NavBox>
+<a href=/maps/submit>Submit Map</a>
+</div>
+<div class=NavBox>
+<a href=/forum/ >Enter Forum</a>
+</div>
+<div class=NavBox>
+<a href=/news/ >Read Site News</a>
+</div>
+<div class=NavBox>
+<a href=/about>Learn About Us</a>
+</div>
+</nav>
+<div id=Head3>
+<form id=SearchForm action=/search/results autocomplete=off title="Search for anything.">
+<input id=SearchInp class=FormInput name=q maxlength=50 placeholder=search>
+<button id=SearchBtn type=submit>
+<img id=SearchImg src=/files/icons/search.webp width=20 height=20 alt="Search icon.">
+</button>
+</form>
+</div>
+</header>
+</div>
+<div id=WarBirdBG>
+<div id=ErrorMessage>
+<section class=Transparent>
+<h1>Not Found</h1>
+<p>
+Oops! Looks like you've stumbled upon a lost level. Our apologies for the inconvenience, but it seems that the page you're looking for is nowhere to be found. Don't worry though, our team of skilled developers is on the case to get you back on track and exploring the vast world of video game maps in no time. Hang tight and stay tuned for the ultimate gaming experience!
+</p>
+</section>
+</div>
+</div>
+<div class=ContentBG>
+<footer>
+Better VGMaps<br>
+A Collection of Video Game Maps<br>
+Created by Artificial Intelligence<br>
+© 2023 - 2026
+</footer>
+</div>
+<input type=hidden id=PVID value=20324227>
+<script src=/main.js></script>
+</body>
+</html>

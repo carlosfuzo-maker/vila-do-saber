@@ -1,26 +1,248 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --font-fredoka: "Fredoka", system-ui, -apple-system, sans-serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@keyframes floatSlow {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-8px) rotate(1deg);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@keyframes cloudDrift {
+  0% {
+    transform: translateX(-5%);
+  }
+  50% {
+    transform: translateX(5%);
+  }
+  100% {
+    transform: translateX(-5%);
+  }
 }
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(251, 191, 36, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(251, 191, 36, 0.9);
+  }
+}
+
+.animate-float-slow {
+  animation: floatSlow 4s ease-in-out infinite;
+}
+
+.animate-cloud-drift {
+  animation: cloudDrift 20s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 2s ease-in-out infinite;
+}
+
+/* Custom playful scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+  border: 2px solid #f1f5f9;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Tactile 3D button press effect */
+.btn-game {
+  transition: transform 0.1s ease, filter 0.1s ease;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+.btn-game:hover {
+  filter: brightness(1.05);
+}
+.btn-game:active {
+  transform: translateY(2px) scale(0.98);
+}
+
+/* iPad tablet optimizations */
+html, body {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+/* Touch ripple for walking destination */
+@keyframes touchRipple {
+  0% {
+    transform: scale(0.5);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+.touch-target-ripple {
+  animation: touchRipple 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+/* iPad Gamepad D-Pad buttons */
+.dpad-btn {
+  background: linear-gradient(145deg, #334155, #1e293b);
+  border: 2px solid #475569;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+  transition: all 0.08s ease;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+.dpad-btn:active {
+  background: linear-gradient(145deg, #1e293b, #0f172a);
+  transform: scale(0.92);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+/* GBA Retro & Modern HD Styling Classes */
+.pixel-canvas {
+  image-rendering: -moz-crisp-edges;
+  image-rendering: -webkit-crisp-edges;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.modern-hd-canvas {
+  image-rendering: auto;
+  -webkit-font-smoothing: antialiased;
+}
+
+.modern-screen-border {
+  border: 4px solid #1e293b;
+  border-radius: 1.25rem;
+  box-shadow: 
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 20px 40px -15px rgba(0, 0, 0, 0.8),
+    0 0 25px rgba(56, 189, 248, 0.15);
+}
+
+.gba-screen-border {
+  border: 6px solid #1e293b;
+  box-shadow: 
+    0 0 0 2px #475569,
+    0 12px 30px -4px rgba(0, 0, 0, 0.7),
+    inset 0 0 10px rgba(0, 0, 0, 0.8);
+}
+
+.modern-glass-dialog {
+  background: rgba(15, 23, 42, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1.5px solid rgba(147, 197, 253, 0.35);
+  box-shadow: 
+    0 20px 35px -5px rgba(0, 0, 0, 0.7),
+    0 0 20px rgba(56, 189, 248, 0.2),
+    inset 0 1px 1px rgba(255, 255, 255, 0.2);
+  border-radius: 1.25rem;
+}
+
+.gba-dialog-frame {
+  background: linear-gradient(180deg, #fffefb 0%, #f6f1e5 100%);
+  border: 4px solid #16253d;
+  box-shadow: 
+    inset 0 0 0 2px #ffffff,
+    inset 0 0 0 4px #cfb283,
+    0 8px 24px -2px rgba(0, 0, 0, 0.6);
+  border-radius: 12px;
+}
+
+.gba-name-badge {
+  background: linear-gradient(180deg, #1d4ed8 0%, #1e3a8a 100%);
+  border: 2px solid #93c5fd;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.4);
+}
+
+.modern-name-badge {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 50%, #1e40af 100%);
+  border: 1px solid rgba(191, 219, 254, 0.6);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.4);
+  border-radius: 9999px;
+}
+
+.gba-dpad-housing {
+  background: radial-gradient(circle at 50% 50%, #1e2430 0%, #0d1117 100%);
+  border: 3px solid #334155;
+  box-shadow: 
+    inset 0 3px 6px rgba(0, 0, 0, 0.8),
+    0 4px 10px rgba(0, 0, 0, 0.5);
+}
+
+.gba-dpad-cross {
+  filter: drop-shadow(0 4px 5px rgba(0, 0, 0, 0.6));
+}
+
+.gba-btn-a-tactile {
+  background: radial-gradient(circle at 35% 30%, #ef4444 0%, #dc2626 55%, #991b1b 100%);
+  box-shadow: 
+    0 5px 0 #7f1d1d,
+    0 8px 14px rgba(0, 0, 0, 0.5),
+    inset 0 2px 3px rgba(255, 255, 255, 0.45);
+  transition: all 0.08s ease;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+.gba-btn-a-tactile:active {
+  transform: translateY(3px) scale(0.96);
+  box-shadow: 
+    0 2px 0 #7f1d1d,
+    0 3px 6px rgba(0, 0, 0, 0.5),
+    inset 0 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+.gba-btn-b-tactile {
+  background: radial-gradient(circle at 35% 30%, #475569 0%, #334155 55%, #1e293b 100%);
+  box-shadow: 
+    0 5px 0 #0f172a,
+    0 8px 14px rgba(0, 0, 0, 0.5),
+    inset 0 2px 3px rgba(255, 255, 255, 0.35);
+  transition: all 0.08s ease;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+.gba-btn-b-tactile:active {
+  transform: translateY(3px) scale(0.96);
+  box-shadow: 
+    0 2px 0 #0f172a,
+    0 3px 6px rgba(0, 0, 0, 0.5),
+    inset 0 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+.gba-btn-sub-tactile {
+  background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+  border: 2px solid #38bdf8;
+  box-shadow: 
+    0 3px 0 #0369a1,
+    0 6px 10px rgba(0, 0, 0, 0.4),
+    inset 0 1px 2px rgba(255, 255, 255, 0.2);
+  transition: all 0.08s ease;
+}
+.gba-btn-sub-tactile:active {
+  transform: translateY(2px) scale(0.95);
+  box-shadow: 
+    0 1px 0 #0369a1,
+    inset 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+
+

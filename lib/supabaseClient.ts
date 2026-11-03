@@ -1,0 +1,397 @@
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { ProfileId, RpgSaveData, StudentYear } from "@/app/rpg/rpgTypes";
+import { getPokemonArtworkUrl, getPokemonSpriteUrl, getPokemonAnimatedUrl } from "@/app/rpg/data/kantoPokedex";
+
+// Storage keys
+export const SUPABASE_URL_KEY = "vila_supabase_url";
+export const SUPABASE_ANON_KEY = "vila_supabase_anon_key";
+export const ACTIVE_PROFILE_KEY = "vila_rpg_active_profile";
+
+/**
+ * Returns Supabase credentials from environment variables or client-side custom config.
+ */
+export function getSupabaseCredentials(): { url: string; anonKey: string; isCustom: boolean } {
+  let url = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+  let anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+  let isCustom = false;
+
+  if (typeof window !== "undefined") {
+    const customUrl = localStorage.getItem(SUPABASE_URL_KEY);
+    const customKey = localStorage.getItem(SUPABASE_ANON_KEY);
+    if (customUrl && customKey) {
+      url = customUrl.trim();
+      anonKey = customKey.trim();
+      isCustom = true;
+    }
+  }
+
+  return { url, anonKey, isCustom };
+}
+
+let cachedClient: SupabaseClient | null = null;
+let lastUsedUrl = "";
+let lastUsedKey = "";
+
+/**
+ * Get or create the Supabase client instance.
+ */
+export function getSupabaseClient(): SupabaseClient | null {
+  const { url, anonKey } = getSupabaseCredentials();
+
+  if (!url || !anonKey || url.includes("your-project-id") || !url.startsWith("http")) {
+    return null;
+  }
+
+  if (cachedClient && lastUsedUrl === url && lastUsedKey === anonKey) {
+    return cachedClient;
+  }
+
+  try {
+    cachedClient = createClient(url, anonKey, {
+      auth: { persistSession: false },
+    });
+    lastUsedUrl = url;
+    lastUsedKey = anonKey;
+    return cachedClient;
+  } catch (err) {
+    console.error("Failed to initialize Supabase client:", err);
+    return null;
+  }
+}
+
+/**
+ * Save custom Supabase credentials directly in localStorage.
+ */
+export function saveCustomSupabaseConfig(url: string, anonKey: string) {
+  if (typeof window === "undefined") return;
+  if (!url || !anonKey) {
+    localStorage.removeItem(SUPABASE_URL_KEY);
+    localStorage.removeItem(SUPABASE_ANON_KEY);
+  } else {
+    localStorage.setItem(SUPABASE_URL_KEY, url.trim());
+    localStorage.setItem(SUPABASE_ANON_KEY, anonKey.trim());
+  }
+  cachedClient = null;
+  lastUsedUrl = "";
+  lastUsedKey = "";
+}
+
+/**
+ * Test connectivity with Supabase.
+ */
+export async function testSupabaseConnection(): Promise<{ ok: boolean; message: string }> {
+  const client = getSupabaseClient();
+  if (!client) {
+    return {
+      ok: false,
+      message: "Credenciais do Supabase não configuradas no sistema.",
+    };
+  }
+
+  try {
+    const { error } = await client.from("rpg_profiles").select("id").limit(1);
+    if (error) {
+      // If table doesn't exist yet, connection is still valid, but table is missing
+      if (error.code === "42P01" || error.message?.includes("relation \"rpg_profiles\" does not exist")) {
+        return {
+          ok: false,
+          message: "Conexão OK, mas a tabela 'rpg_profiles' ainda não foi criada no Supabase. Execute o script SQL no painel.",
+        };
+      }
+      return { ok: false, message: `Erro do Supabase: ${error.message}` };
+    }
+    return { ok: true, message: "Conexão com Supabase estabelecida com sucesso!" };
+  } catch (err: any) {
+    return { ok: false, message: `Falha de rede: ${err?.message || "Não foi possível conectar"}` };
+  }
+}
+
+/**
+ * Default game state for a new sister profile.
+ */
+export function getDefaultProfileSave(profileId: ProfileId): RpgSaveData {
+  const isCecilia = profileId === "cecilia";
+  const year: StudentYear = isCecilia ? 4 : 2;
+  const starterPokedexId = isCecilia ? 25 : 133;
+  const starterName = isCecilia ? "Pikachu" : "Eevee";
+
+  return {
+    id: profileId,
+    playerName: isCecilia ? "Cecília" : "Bianca",
+    year,
+    pin: isCecilia ? "4444" : "2222",
+    x: 20,
+    y: 29,
+    direction: "up",
+    currentZone: "Vila da Família",
+    coins: 180,
+    xp: 420,
+    inventory: {
+      pokeballs: 5,
+      potions: 2,
+      antidotes: 2,
+      berries: 3,
+      thunderStones: isCecilia ? 1 : 0,
+      waterStones: !isCecilia ? 1 : 0,
+      fireStones: 0,
+      leafStones: 0,
+      moonStones: 0,
+    },
+    pokemonList: [
+      {
+        id: `starter-${profileId}`,
+        name: starterName,
+        species: starterName,
+        emoji: isCecilia ? "⚡" : "🦊",
+        pokedexId: starterPokedexId,
+        artworkUrl: getPokemonArtworkUrl(starterPokedexId),
+        spriteUrl: getPokemonSpriteUrl(starterPokedexId),
+        animatedUrl: getPokemonAnimatedUrl(starterPokedexId),
+        type: isCecilia ? "Elétrico" : "Normal",
+        typeColor: isCecilia ? "#eab308" : "#b45309",
+        level: 5,
+        exp: 0,
+        maxEnergy: 100,
+        energy: 100,
+        status: "healthy",
+        caughtAt: "Início da Jornada",
+        friendship: 90,
+      },
+    ],
+    stolenPokemonList: [],
+    unlockedRoutes: {
+      matematica: false,
+      ciencias: false,
+      portugues: false,
+      ingles: false,
+    },
+    explorerSkills: {
+      surf: false,
+      cut: false,
+      flash: false,
+      smash: false,
+    },
+    gymBadges: {
+      math_boulder: false,
+      science_cascade: false,
+      portuguese_rainbow: false,
+      english_thunder: false,
+    },
+    customization: {
+      hairStyle: isCecilia ? "ponytail" : "straight",
+      hairColor: isCecilia ? "#4a2e18" : "#eab308",
+      skinTone: "#fed7aa",
+      eyeColor: isCecilia ? "#451a03" : "#0284c7",
+      outfitId: "firered_classic",
+      hatId: "red_cap",
+      accessoryId: "explorer_backpack",
+    },
+    unlockedWardrobeItems: ["firered_classic", "red_cap", "explorer_backpack"],
+    activeQuest: {
+      id: `quest-initial-${profileId}`,
+      sender: "papai",
+      title: isCecilia
+        ? "Missão Urgente do Pai: Matemática na Metrópole"
+        : "Missão Urgente do Pai: Ciências no Vale",
+      description: isCecilia
+        ? "Filha Cecília, vá até a Metrópole da Matemática resolver os desafios de tabuada! Conclua esse pedido antes de ir a outros lugares!"
+        : "Filha Bianca, vá até o Vale das Ciências estudar os seres vivos e vencer a barreira da Equipe Rocket!",
+      targetSubjectId: isCecilia ? "matematica" : "ciencias",
+      targetCityName: isCecilia ? "Metrópole da Matemática" : "Vale das Ciências",
+      rewardCoins: 50,
+      rewardXp: 40,
+      requiredCount: 1,
+      currentCount: 0,
+      isCompleted: false,
+    },
+    phoneMessages: [
+      {
+        id: "msg-1",
+        sender: "papai",
+        senderName: "Papai Carlos",
+        avatarEmoji: "👨‍👧",
+        text: isCecilia
+          ? "Filha Cecília, o Professor Pitágoras na Metrópole da Matemática precisa da sua ajuda com a tabuada! Vá direto para lá e conclua seu dever escolar!"
+          : "Filha Bianca, a Dra. Flora mandou um recado sobre as plantinhas no Vale das Ciências! Vá lá primeiro cumprir a missão!",
+        timeAgo: "Agora",
+        targetSubjectId: isCecilia ? "matematica" : "ciencias",
+        targetCityName: isCecilia ? "Metrópole da Matemática" : "Vale das Ciências",
+        rewardCoins: 50,
+        rewardXp: 40,
+        isCompleted: false,
+        requiredToUnlockRoute: true,
+      },
+    ],
+    rivalConfig: {
+      name: "Gary",
+      gender: "boy",
+      starterPokedexId: isCecilia ? 133 : 25,
+      defeatedEncounters: [],
+    },
+    answeredQuestionIds: [],
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+/**
+ * Loads a profile from Supabase (with fallback to localStorage cache).
+ */
+export async function loadProfileSave(profileId: ProfileId): Promise<{
+  data: RpgSaveData;
+  fromCloud: boolean;
+}> {
+  const localKey = `vila_rpg_save_${profileId}`;
+  let localData: RpgSaveData | null = null;
+
+  if (typeof window !== "undefined") {
+    try {
+      const cached = localStorage.getItem(localKey);
+      if (cached) {
+        localData = JSON.parse(cached);
+      }
+    } catch (e) {
+      console.warn("Failed to read local cache:", e);
+    }
+  }
+
+  const client = getSupabaseClient();
+  if (client) {
+    try {
+      const { data, error } = await client
+        .from("rpg_profiles")
+        .select("*")
+        .eq("id", profileId)
+        .single();
+
+      if (!error && data) {
+        // Map database row to RpgSaveData
+        const cloudData: RpgSaveData = {
+          id: data.id as ProfileId,
+          playerName: data.player_name,
+          year: Number(data.year) as StudentYear,
+          pin: data.pin || (profileId === "cecilia" ? "4444" : "2222"),
+          x: typeof data.x === "number" ? data.x : 20,
+          y: typeof data.y === "number" ? data.y : 29,
+          direction: data.direction || "up",
+          currentZone: data.current_zone || "Vila da Família",
+          coins: typeof data.coins === "number" ? data.coins : 180,
+          xp: typeof data.xp === "number" ? data.xp : 420,
+          inventory: data.inventory || {},
+          pokemonList: Array.isArray(data.pokemon_list) ? data.pokemon_list : [],
+          stolenPokemonList: Array.isArray(data.stolen_pokemon_list) ? data.stolen_pokemon_list : [],
+          unlockedRoutes: data.unlocked_routes || {},
+          explorerSkills: data.explorer_skills || { surf: false, cut: false, flash: false, smash: false },
+          gymBadges: data.gym_badges || { math_boulder: false, science_cascade: false, portuguese_rainbow: false, english_thunder: false },
+          customization: data.customization || {},
+          unlockedWardrobeItems: Array.isArray(data.unlocked_wardrobe_items) ? data.unlocked_wardrobe_items : [],
+          activeQuest: data.active_quest || null,
+          phoneMessages: Array.isArray(data.phone_messages) ? data.phone_messages : [],
+          rivalConfig: data.rival_config || null,
+          updatedAt: data.updated_at || new Date().toISOString(),
+        };
+
+        // Cache in localStorage
+        if (typeof window !== "undefined") {
+          localStorage.setItem(localKey, JSON.stringify(cloudData));
+        }
+
+        return { data: cloudData, fromCloud: true };
+      }
+    } catch (err) {
+      console.warn("Supabase fetch failed, falling back to local storage:", err);
+    }
+  }
+
+  if (localData) {
+    return { data: localData, fromCloud: false };
+  }
+
+  // First time starting: return default
+  const defaultData = getDefaultProfileSave(profileId);
+  if (typeof window !== "undefined") {
+    localStorage.setItem(localKey, JSON.stringify(defaultData));
+  }
+  return { data: defaultData, fromCloud: false };
+}
+
+/**
+ * Saves profile data to localStorage and asynchronously to Supabase.
+ */
+export async function saveProfileSave(saveData: RpgSaveData): Promise<{
+  success: boolean;
+  cloudSaved: boolean;
+  error?: string;
+}> {
+  const localKey = `vila_rpg_save_${saveData.id}`;
+
+  // 1. Always save locally immediately
+  if (typeof window !== "undefined") {
+    try {
+      localStorage.setItem(localKey, JSON.stringify(saveData));
+    } catch (e) {
+      console.warn("Local storage write failed:", e);
+    }
+  }
+
+  // 2. Sync to Supabase
+  const client = getSupabaseClient();
+  if (!client) {
+    return {
+      success: true,
+      cloudSaved: false,
+      error: "Supabase não conectado. Progresso salvo localmente com segurança no dispositivo.",
+    };
+  }
+
+  try {
+    const dbPayload = {
+      id: saveData.id,
+      player_name: saveData.playerName,
+      year: saveData.year,
+      pin: saveData.pin,
+      x: saveData.x,
+      y: saveData.y,
+      direction: saveData.direction,
+      current_zone: saveData.currentZone,
+      coins: saveData.coins,
+      xp: saveData.xp,
+      inventory: saveData.inventory,
+      pokemon_list: saveData.pokemonList,
+      stolen_pokemon_list: saveData.stolenPokemonList,
+      unlocked_routes: saveData.unlockedRoutes,
+      explorer_skills: saveData.explorerSkills,
+      gym_badges: saveData.gymBadges,
+      customization: saveData.customization,
+      unlocked_wardrobe_items: saveData.unlockedWardrobeItems,
+      active_quest: saveData.activeQuest,
+      phone_messages: saveData.phoneMessages,
+      rival_config: saveData.rivalConfig,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { error } = await client.from("rpg_profiles").upsert(dbPayload, {
+      onConflict: "id",
+    });
+
+    if (error) {
+      console.warn("Supabase upsert error:", error);
+      return {
+        success: true,
+        cloudSaved: false,
+        error: error.message,
+      };
+    }
+
+    return {
+      success: true,
+      cloudSaved: true,
+    };
+  } catch (err: any) {
+    console.warn("Supabase network error:", err);
+    return {
+      success: true,
+      cloudSaved: false,
+      error: err?.message || "Erro de rede ao salvar na nuvem.",
+    };
+  }
+}
