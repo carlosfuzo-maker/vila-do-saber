@@ -216,7 +216,9 @@ export function RpgLoginScreen({ onLoginSuccess }: RpgLoginScreenProps) {
                   Cecília
                 </h3>
                 <p className="text-xs sm:text-sm text-amber-200/80 font-medium">
-                  Treinadora Elétrica • Parceiro Pikachu
+                  {ceciliaSave?.pokemonList && ceciliaSave.pokemonList.length > 0
+                    ? `Treinadora • Parceiro ${ceciliaSave.pokemonList[0].name}`
+                    : "Iniciando Jornada • 4º Ano BNCC"}
                 </p>
               </div>
             </div>
@@ -233,7 +235,7 @@ export function RpgLoginScreen({ onLoginSuccess }: RpgLoginScreenProps) {
                     <MapPin className="w-3.5 h-3.5 text-red-400" /> Local:
                   </span>
                   <span className="font-semibold text-white truncate max-w-[170px]">
-                    {ceciliaSave?.currentZone || "Vila da Família"}
+                    {ceciliaSave?.currentZone || "Casa da Família • Quarto das Meninas"}
                   </span>
                 </div>
 
@@ -242,7 +244,7 @@ export function RpgLoginScreen({ onLoginSuccess }: RpgLoginScreenProps) {
                     <Coins className="w-3.5 h-3.5 text-amber-400" /> Recursos:
                   </span>
                   <span className="font-semibold text-amber-300">
-                    {ceciliaSave?.coins ?? 180} Moedas • {ceciliaSave?.xp ?? 420} EXP
+                    {ceciliaSave?.coins ?? 50} Moedas • {ceciliaSave?.xp ?? 0} EXP
                   </span>
                 </div>
 
@@ -251,10 +253,9 @@ export function RpgLoginScreen({ onLoginSuccess }: RpgLoginScreenProps) {
                     <Award className="w-3.5 h-3.5 text-emerald-400" /> Equipe:
                   </span>
                   <span className="font-semibold text-emerald-400">
-                    {ceciliaSave?.pokemonList?.length || 1} Pokémon
-                    {ceciliaSave?.pokemonList?.[0]
-                      ? ` (${ceciliaSave.pokemonList[0].name} Nv.${ceciliaSave.pokemonList[0].level})`
-                      : ""}
+                    {ceciliaSave?.pokemonList && ceciliaSave.pokemonList.length > 0
+                      ? `${ceciliaSave.pokemonList.length} Pokémon (${ceciliaSave.pokemonList[0].name} Nv.${ceciliaSave.pokemonList[0].level})`
+                      : "Aguardando Escolha com Papai Carlos"}
                   </span>
                 </div>
               </div>
@@ -307,7 +308,9 @@ export function RpgLoginScreen({ onLoginSuccess }: RpgLoginScreenProps) {
                   Bianca
                 </h3>
                 <p className="text-xs sm:text-sm text-emerald-200/80 font-medium">
-                  Treinadora Natureza • Parceiro Eevee
+                  {biancaSave?.pokemonList && biancaSave.pokemonList.length > 0
+                    ? `Treinadora • Parceira ${biancaSave.pokemonList[0].name}`
+                    : "Iniciando Jornada • 2º Ano BNCC"}
                 </p>
               </div>
             </div>
@@ -324,7 +327,7 @@ export function RpgLoginScreen({ onLoginSuccess }: RpgLoginScreenProps) {
                     <MapPin className="w-3.5 h-3.5 text-red-400" /> Local:
                   </span>
                   <span className="font-semibold text-white truncate max-w-[170px]">
-                    {biancaSave?.currentZone || "Vila da Família"}
+                    {biancaSave?.currentZone || "Casa da Família • Quarto das Meninas"}
                   </span>
                 </div>
 
@@ -333,7 +336,7 @@ export function RpgLoginScreen({ onLoginSuccess }: RpgLoginScreenProps) {
                     <Coins className="w-3.5 h-3.5 text-amber-400" /> Recursos:
                   </span>
                   <span className="font-semibold text-amber-300">
-                    {biancaSave?.coins ?? 180} Moedas • {biancaSave?.xp ?? 420} EXP
+                    {biancaSave?.coins ?? 50} Moedas • {biancaSave?.xp ?? 0} EXP
                   </span>
                 </div>
 
@@ -342,10 +345,9 @@ export function RpgLoginScreen({ onLoginSuccess }: RpgLoginScreenProps) {
                     <Award className="w-3.5 h-3.5 text-emerald-400" /> Equipe:
                   </span>
                   <span className="font-semibold text-emerald-400">
-                    {biancaSave?.pokemonList?.length || 1} Pokémon
-                    {biancaSave?.pokemonList?.[0]
-                      ? ` (${biancaSave.pokemonList[0].name} Nv.${biancaSave.pokemonList[0].level})`
-                      : ""}
+                    {biancaSave?.pokemonList && biancaSave.pokemonList.length > 0
+                      ? `${biancaSave.pokemonList.length} Pokémon (${biancaSave.pokemonList[0].name} Nv.${biancaSave.pokemonList[0].level})`
+                      : "Aguardando Escolha com Papai Carlos"}
                   </span>
                 </div>
               </div>

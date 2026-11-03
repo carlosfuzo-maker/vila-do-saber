@@ -21,6 +21,7 @@ import { IndigoPlateauModal } from "./components/IndigoPlateauModal";
 import { ExamAlertModal } from "../vila/components/ExamAlertModal";
 import { RpgLoginScreen } from "./components/RpgLoginScreen";
 import { RpgCloudSettingsModal } from "./components/RpgCloudSettingsModal";
+import { StarterSelectionModal, StarterChoiceOption } from "./components/StarterSelectionModal";
 import {
   KANTO_POKEDEX_151,
   getWaterPokemonPool,
@@ -438,18 +439,18 @@ export default function RpgPage() {
   const playerName = isPlayerCecilia ? "Cecília" : "Bianca";
   const sisterName = isPlayerCecilia ? "Bianca" : "Cecília";
 
-  // Score & Coins
-  const [coins, setCoins] = useState<number>(180);
-  const [xp, setXp] = useState<number>(420);
+  // Score & Coins (Novo Jogo: 50 moedas iniciais, 0 XP)
+  const [coins, setCoins] = useState<number>(50);
+  const [xp, setXp] = useState<number>(0);
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [showHelp, setShowHelp] = useState<boolean>(false);
 
   // Active Zone tracking & Banner
-  const [currentZone, setCurrentZone] = useState<string>("Vila da Família");
+  const [currentZone, setCurrentZone] = useState<string>("Casa da Família • Quarto das Meninas");
   const [zoneBanner, setZoneBanner] = useState<{ title: string; subtitle: string; icon: string } | null>({
-    title: "Vila da Família",
-    subtitle: "Lar do Papai Carlos, Mamãe Renata e as irmãs",
-    icon: "🏡",
+    title: "Casa da Família",
+    subtitle: "Quarto das Meninas • Pallet Town",
+    icon: "🛏️",
   });
 
   // Route Lock States (Defeating Rocket Grunt unlocks route)
@@ -466,38 +467,18 @@ export default function RpgPage() {
   // INVENTORY & POKEMON STATES (WITH LOCALSTORAGE PERSISTENCE)
   // ========================================================
   const [inventory, setInventory] = useState<RpgInventory>({
-    pokeballs: 5,
-    potions: 2,
-    antidotes: 2,
-    berries: 3,
-    thunderStones: 1,
-    waterStones: 1,
+    pokeballs: 0,
+    potions: 0,
+    antidotes: 0,
+    berries: 0,
+    thunderStones: 0,
+    waterStones: 0,
     fireStones: 0,
     leafStones: 0,
     moonStones: 0,
   });
 
-  const [pokemonList, setPokemonList] = useState<CapturedPokemon[]>([
-    {
-      id: "starter-1",
-      name: isPlayerCecilia ? "Pikachu" : "Eevee",
-      species: isPlayerCecilia ? "Pikachu" : "Eevee",
-      emoji: isPlayerCecilia ? "⚡" : "🦊",
-      pokedexId: isPlayerCecilia ? 25 : 133,
-      artworkUrl: isPlayerCecilia ? getPokemonArtworkUrl(25) : getPokemonArtworkUrl(133),
-      spriteUrl: isPlayerCecilia ? getPokemonSpriteUrl(25) : getPokemonSpriteUrl(133),
-      animatedUrl: isPlayerCecilia ? getPokemonAnimatedUrl(25) : getPokemonAnimatedUrl(133),
-      type: isPlayerCecilia ? "Elétrico" : "Normal",
-      typeColor: isPlayerCecilia ? "#eab308" : "#b45309",
-      level: 5,
-      exp: 0,
-      maxEnergy: 100,
-      energy: 100,
-      status: "healthy",
-      caughtAt: "Início da Jornada",
-      friendship: 90,
-    },
-  ]);
+  const [pokemonList, setPokemonList] = useState<CapturedPokemon[]>([]);
 
   const [stolenPokemonList, setStolenPokemonList] = useState<CapturedPokemon[]>([]);
 
@@ -526,6 +507,7 @@ export default function RpgPage() {
   const [brokenCaveRocks, setBrokenCaveRocks] = useState<Record<string, boolean>>({});
   const [cutForestBushes, setCutForestBushes] = useState<Record<string, boolean>>({});
   const [openedForestChests, setOpenedForestChests] = useState<Record<string, boolean>>({});
+  const [isStarterModalOpen, setIsStarterModalOpen] = useState<boolean>(false);
 
   // Restore 100% HP & Energy to all Pokemon
   const healAllPokemon = useCallback(() => {
@@ -998,46 +980,68 @@ export default function RpgPage() {
     setCoins(typeof data.coins === "number" ? data.coins : 180);
     setXp(typeof data.xp === "number" ? data.xp : 420);
     if (data.inventory) setInventory(data.inventory);
-    if (Array.isArray(data.pokemonList) && data.pokemonList.length > 0) setPokemonList(data.pokemonList);
-    if (Array.isArray(data.stolenPokemonList)) setStolenPokemonList(data.stolenPokemonList);
-    if (data.unlockedRoutes) setUnlockedRoutes(data.unlockedRoutes as any);
-    if (data.explorerSkills) setExplorerSkills(data.explorerSkills);
-    if (data.gymBadges) setGymBadges(data.gymBadges);
-    if (data.customization) setCustomization(data.customization);
-    if (Array.isArray(data.unlockedWardrobeItems)) setUnlockedWardrobeItems(data.unlockedWardrobeItems);
-    if (data.activeQuest) setActiveQuest(data.activeQuest);
-    if (Array.isArray(data.phoneMessages)) setMessages(data.phoneMessages);
-    if (data.rivalConfig) setRivalConfig(data.rivalConfig);
-    if (data.currentZone) setCurrentZone(data.currentZone);
-    if (Array.isArray(data.answeredQuestionIds)) {
-      setAnsweredQuestionIds(data.answeredQuestionIds);
-      answeredQuestionIdsRef.current = data.answeredQuestionIds;
+    const hasPkmn = Array.isArray(data.pokemonList) && data.pokemonList.length > 0;
+    if (hasPkmn) {
+      setPokemonList(data.pokemonList);
     } else {
-      setAnsweredQuestionIds([]);
-      answeredQuestionIdsRef.current = [];
+      setPokemonList([]);
     }
 
-    // Restore exact tile position on the map (safely fallback to Pallet Town)
-    let targetX = typeof data.x === "number" ? data.x : 32;
-    let targetY = typeof data.y === "number" ? data.y : 154;
-    // Migrate legacy coordinates from old 40x64 map
-    if ((targetX === 10 && targetY === 54) || targetX < 1 || targetX >= MAP_COLS - 1 || targetY < 1 || targetY >= MAP_ROWS - 1) {
-      targetX = 32;
-      targetY = 154;
+    if (!hasPkmn) {
+      // Awakening in Casa da Família (Pallet Town) Floor 2: Quarto das Meninas
+      setActiveInterior({
+        buildingId: "family_house",
+        buildingName: "Casa da Família (Ash & Red)",
+        floor: 2,
+        returnX: 32,
+        returnY: 154,
+      });
+      const startX = 2;
+      const startY = data.id === "cecilia" ? 6 : 5;
+      playerRef.current.gridX = startX;
+      playerRef.current.gridY = startY;
+      playerRef.current.drawX = startX;
+      playerRef.current.drawY = startY;
+      playerRef.current.direction = "down";
+      playerRef.current.isMoving = false;
+      playerRef.current.moveProgress = 0;
+      lastSavedPosRef.current = { x: startX, y: startY };
+      setCurrentZone("Casa da Família • Quarto das Meninas");
+
+      // Opening dialogue sequence
+      setTimeout(() => {
+        playSound("fanfare");
+        setActiveDialog({
+          speaker: "Papai Carlos 👨‍👧",
+          role: "Família • Chamado Matinal",
+          avatarSprite: "parent",
+          text: `Bom dia, ${data.playerName}! Hora de acordar! Hoje é o dia mais esperado da sua jornada na Vila do Saber! Desça as escadas até a sala de estar no térreo: venha tomar café da manhã e escolher o seu primeiro parceiro Pokémon!`,
+        });
+      }, 500);
+    } else {
+      setActiveInterior(null);
+      // Restore exact tile position on the map (safely fallback to Pallet Town)
+      let targetX = typeof data.x === "number" ? data.x : 32;
+      let targetY = typeof data.y === "number" ? data.y : 154;
+      // Migrate legacy coordinates from old 40x64 map
+      if ((targetX === 10 && targetY === 54) || targetX < 1 || targetX >= MAP_COLS - 1 || targetY < 1 || targetY >= MAP_ROWS - 1) {
+        targetX = 32;
+        targetY = 154;
+      }
+      const savedTile = mapData.current[targetY]?.[targetX];
+      if (savedTile === "X" || savedTile === "H" || savedTile === "#" || savedTile === "W") {
+        targetX = 32;
+        targetY = 154;
+      }
+      playerRef.current.gridX = targetX;
+      playerRef.current.gridY = targetY;
+      playerRef.current.drawX = targetX;
+      playerRef.current.drawY = targetY;
+      playerRef.current.direction = data.direction || "down";
+      playerRef.current.isMoving = false;
+      playerRef.current.moveProgress = 0;
+      lastSavedPosRef.current = { x: targetX, y: targetY };
     }
-    const savedTile = mapData.current[targetY]?.[targetX];
-    if (savedTile === "X" || savedTile === "H" || savedTile === "#" || savedTile === "W") {
-      targetX = 32;
-      targetY = 154;
-    }
-    playerRef.current.gridX = targetX;
-    playerRef.current.gridY = targetY;
-    playerRef.current.drawX = targetX;
-    playerRef.current.drawY = targetY;
-    playerRef.current.direction = data.direction || "down";
-    playerRef.current.isMoving = false;
-    playerRef.current.moveProgress = 0;
-    lastSavedPosRef.current = { x: targetX, y: targetY };
 
     if (typeof window !== "undefined") {
       localStorage.setItem(ACTIVE_PROFILE_KEY, data.id);
@@ -1147,6 +1151,153 @@ export default function RpgPage() {
     ]
   );
 
+  // Handle Starter Pokemon Choice with Papai Carlos
+  const handleSelectStarter = useCallback(
+    (starter: StarterChoiceOption) => {
+      setIsStarterModalOpen(false);
+
+      const newPokemon: CapturedPokemon = {
+        id: `starter-${activeProfileId || "hero"}-${Date.now()}`,
+        name: starter.name,
+        species: starter.species,
+        emoji: starter.emoji,
+        pokedexId: starter.pokedexId,
+        artworkUrl: getPokemonArtworkUrl(starter.pokedexId),
+        spriteUrl: getPokemonSpriteUrl(starter.pokedexId),
+        animatedUrl: getPokemonAnimatedUrl(starter.pokedexId),
+        type: starter.type,
+        typeColor: starter.typeColor,
+        level: 5,
+        exp: 0,
+        maxEnergy: 100,
+        energy: 100,
+        status: "healthy",
+        caughtAt: "Casa da Família • Presente do Papai Carlos",
+        friendship: 100,
+      };
+
+      const updatedPokemonList = [newPokemon];
+      setPokemonList(updatedPokemonList);
+
+      // Deliver starter supplies: 5 Pokéballs, 2 Potions
+      const updatedInventory: RpgInventory = {
+        ...inventory,
+        pokeballs: (inventory.pokeballs || 0) + 5,
+        potions: (inventory.potions || 0) + 2,
+      };
+      setInventory(updatedInventory);
+
+      // Configure opposing rival based on chosen starter (classic FireRed triangle)
+      let rivalStarterId = 4; // Charmander by default
+      if (starter.pokedexId === 4) rivalStarterId = 7; // Squirtle beats Charmander
+      else if (starter.pokedexId === 7) rivalStarterId = 1; // Bulbasaur beats Squirtle
+      else if (starter.pokedexId === 1) rivalStarterId = 4; // Charmander beats Bulbasaur
+      else if (starter.pokedexId === 25) rivalStarterId = 133; // Eevee for Pikachu
+
+      const updatedRivalConfig = {
+        name: "Gary",
+        gender: "boy" as const,
+        starterPokedexId: rivalStarterId,
+        defeatedEncounters: [],
+      };
+      setRivalConfig(updatedRivalConfig);
+
+      // Create initial quest for Quest Panel
+      const isCecilia = activeProfileId === "cecilia";
+      const initialQuest: ActiveStoryQuest = {
+        id: `quest-starter-${activeProfileId}`,
+        sender: "papai",
+        title: isCecilia
+          ? "Primeira Jornada: Rota 1 e Metrópole da Matemática"
+          : "Primeira Jornada: Rota 1 e Vale das Ciências",
+        description: isCecilia
+          ? "Parabéns pelo seu Pokémon inicial, Cecília! Saia pela porta da nossa casa em Pallet Town, cruze a Rota 1 e vá até a Metrópole da Matemática para testar seus conhecimentos e vencer o primeiro Ginásio!"
+          : "Parabéns pelo seu Pokémon inicial, Bianca! Saia pela porta da nossa casa em Pallet Town, cruze a Rota 1 e vá até o Vale das Ciências para cuidar dos animais e desvendar os mistérios da natureza!",
+        targetSubjectId: isCecilia ? "matematica" : "ciencias",
+        targetCityName: isCecilia ? "Metrópole da Matemática" : "Vale das Ciências",
+        rewardCoins: 100,
+        rewardXp: 50,
+        requiredCount: 1,
+        currentCount: 0,
+        isCompleted: false,
+      };
+      setActiveQuest(initialQuest);
+
+      // Create welcoming phone message unlocking PokéCelular
+      const initialPhoneMessage: PhoneMessage = {
+        id: `msg-starter-${Date.now()}`,
+        sender: "papai",
+        senderName: "Papai Carlos",
+        avatarEmoji: "👨‍👧",
+        text: `Parabéns pela escolha do seu ${starter.name}, minha filha! Agora o seu PokéCelular e o painel de missões estão liberados! Você pode consultar recados, ver o mapa de Kanto e responder às perguntas da Vila do Saber para ganhar moedas e evoluir seu Pokémon! Estamos torcendo por você!`,
+        timeAgo: "Agora",
+        targetSubjectId: isCecilia ? "matematica" : "ciencias",
+        targetCityName: isCecilia ? "Metrópole da Matemática" : "Vale das Ciências",
+        rewardCoins: 100,
+        rewardXp: 50,
+        isCompleted: false,
+        requiredToUnlockRoute: true,
+      };
+      setMessages([initialPhoneMessage]);
+
+      playSfx("fanfare");
+      setVictoryNotice(`Recebeu ${starter.name} ${starter.emoji}! PokéCelular & Missões liberados!`);
+
+      setActiveDialog({
+        speaker: "Papai Carlos 👨‍👧",
+        role: "Família • Entrega do Inicial",
+        avatarSprite: "parent",
+        text: `Que momento lindo! O seu ${starter.name} já tem um carinho imenso por você! Entreguei a você o 📱 PokéCelular, o caderno de missões, 5 Pokébolas e 2 Poções. Vá lá fora em Pallet Town e mostre a Kanto do que uma jovem sábia é capaz!`,
+      });
+
+      // Perform immediate save to local and Supabase cloud
+      if (activeProfileId) {
+        const saveSnapshot: RpgSaveData = {
+          id: activeProfileId,
+          playerName: isCecilia ? "Cecília" : "Bianca",
+          year: currentYear,
+          pin: profilePin,
+          x: playerRef.current.gridX,
+          y: playerRef.current.gridY,
+          direction: playerRef.current.direction,
+          currentZone: currentZone,
+          coins: coins,
+          xp: xp,
+          inventory: updatedInventory,
+          pokemonList: updatedPokemonList,
+          stolenPokemonList: stolenPokemonList,
+          unlockedRoutes: unlockedRoutes as any,
+          explorerSkills: explorerSkills,
+          gymBadges: gymBadges,
+          customization: customization,
+          unlockedWardrobeItems: unlockedWardrobeItems,
+          activeQuest: initialQuest,
+          phoneMessages: [initialPhoneMessage],
+          rivalConfig: updatedRivalConfig,
+          answeredQuestionIds: answeredQuestionIdsRef.current,
+          updatedAt: new Date().toISOString(),
+        };
+        saveProfileSave(saveSnapshot).catch(console.warn);
+      }
+    },
+    [
+      activeProfileId,
+      currentYear,
+      profilePin,
+      coins,
+      xp,
+      inventory,
+      stolenPokemonList,
+      unlockedRoutes,
+      explorerSkills,
+      gymBadges,
+      customization,
+      unlockedWardrobeItems,
+      currentZone,
+      playSfx,
+    ]
+  );
+
   // Auto-save on major state changes (debounced 1.2s)
   useEffect(() => {
     if (!activeProfileId || isCheckingInitialSession) return;
@@ -1170,6 +1321,18 @@ export default function RpgPage() {
     answeredQuestionIds,
     performCloudSave,
   ]);
+
+  // Helper to open PokéCelular with Starter Pokémon lock
+  const openPhoneIfAllowed = useCallback(() => {
+    if (pokemonList.length === 0) {
+      playSfx("pop");
+      setVictoryNotice("📱 O PokéCelular será liberado assim que você escolher seu Pokémon inicial com o Papai!");
+      return;
+    }
+    setIsPhoneOpen(true);
+    setHasUnreadPhone(false);
+    playSfx("open");
+  }, [pokemonList.length, playSfx]);
 
   // Auto-save position when player stops moving on a tile (debounced 1.5s)
   useEffect(() => {
@@ -2718,6 +2881,20 @@ export default function RpgPage() {
   // Return smoothly outside the door when exiting any Walkable Interior
   const handleExitInterior = useCallback(() => {
     if (!activeInterior) return;
+
+    // Block exiting Family House without choosing starter Pokemon
+    if (activeInterior.buildingId === "family_house" && pokemonList.length === 0) {
+      playSfx("pop");
+      setActiveDialog({
+        speaker: "Papai Carlos 👨‍👧",
+        role: "Família • Escolha do Inicial",
+        avatarSprite: "parent",
+        text: `Espere um instante, ${playerName}! Não vá para a grama alta lá fora sem o seu primeiro parceiro Pokémon! Venha até a mesa escolher seu inicial!`,
+      });
+      setIsStarterModalOpen(true);
+      return;
+    }
+
     targetMoveTile.current = null;
     touchDirection.current = null;
     keysDown.current = {};
@@ -2737,7 +2914,7 @@ export default function RpgPage() {
     setActiveInterior(null);
     setCurrentZone("Vila do Saber");
     setVictoryNotice(`Você saiu do ${exitedName} e voltou à Vila do Saber 🌳`);
-  }, [activeInterior, playSfx]);
+  }, [activeInterior, pokemonList.length, playerName, playSfx]);
 
   // Nurse Joy Healing Sequence with animated Pokeball slots!
   const triggerNurseJoyHeal = useCallback(() => {
@@ -2794,6 +2971,17 @@ export default function RpgPage() {
         const item = getHouseInteractable(targetX, targetY, activeInterior.floor) || getHouseInteractable(p.gridX, p.gridY, activeInterior.floor);
         if (item) {
           if (item.type === "exit") {
+            if (pokemonList.length === 0) {
+              playSfx("pop");
+              setActiveDialog({
+                speaker: "Papai Carlos 👨‍👧",
+                role: "Família • Escolha do Inicial",
+                avatarSprite: "parent",
+                text: `Espere aí, mocinha! Não vá para a grama alta lá fora sem o seu primeiro parceiro Pokémon! Venha até a mesa escolher seu inicial!`,
+              });
+              setIsStarterModalOpen(true);
+              return;
+            }
             handleExitInterior();
             return;
           }
@@ -2819,6 +3007,17 @@ export default function RpgPage() {
             p.direction = "down";
             setCurrentZone("Casa da Família • Térreo");
             setVictoryNotice("Desceu para o 1º Andar 🏡");
+            if (pokemonList.length === 0) {
+              setTimeout(() => {
+                setActiveDialog({
+                  speaker: "Papai Carlos 👨‍👧",
+                  role: "Família • Escolha do Inicial",
+                  avatarSprite: "parent",
+                  text: `Venha até a mesa, ${playerName}! Preparei um café da manhã delicioso e trouxe os quatro Pokémon iniciais para você escolher seu parceiro!`,
+                });
+                setIsStarterModalOpen(true);
+              }, 400);
+            }
             return;
           }
           if (item.type === "bed") {
@@ -2845,6 +3044,16 @@ export default function RpgPage() {
           }
           if (item.type === "papai") {
             playSfx("star");
+            if (pokemonList.length === 0) {
+              setActiveDialog({
+                speaker: "Papai Carlos 👨‍👧",
+                role: "Família • Escolha do Inicial",
+                avatarSprite: "parent",
+                text: `Chegou o grande momento, ${playerName}! Preparei com muito amor quatro parceiros incríveis para iniciar sua jornada: Charmander, Bulbasaur, Squirtle ou Pikachu! Qual deles você quer levar com você?`,
+              });
+              setIsStarterModalOpen(true);
+              return;
+            }
             setActiveDialog({
               speaker: "Papai Carlos 👨‍👧",
               role: "Família",
@@ -3505,6 +3714,8 @@ export default function RpgPage() {
     triggerRocketBattle,
     completeQuestIfTarget,
     stolenPokemonList.length,
+    pokemonList.length,
+    playerName,
   ]);
 
   // Handle Quiz answer in Dialog
@@ -3578,9 +3789,7 @@ export default function RpgPage() {
 
       // Phone shortcut (KeyP)
       if (e.code === "KeyP") {
-        setIsPhoneOpen((prev) => !prev);
-        setHasUnreadPhone(false);
-        playSfx("open");
+        openPhoneIfAllowed();
       }
 
       // Running toggle (Shift or KeyX)
@@ -3612,6 +3821,7 @@ export default function RpgPage() {
     isRescueOpen,
     activeWildEncounter,
     playSfx,
+    openPhoneIfAllowed,
   ]);
 
   // Main 60 FPS Game Loop
@@ -3669,6 +3879,22 @@ export default function RpgPage() {
             if (activeInterior.buildingId === "family_house") {
               // 1. Walked off door mat onto exit threshold (x: 3..4, y: 8)
               if (activeInterior.floor === 1 && (p.gridX === 3 || p.gridX === 4) && p.gridY >= 8) {
+                if (pokemonList.length === 0) {
+                  p.gridY = 7;
+                  p.drawY = 7;
+                  targetMoveTile.current = null;
+                  touchDirection.current = null;
+                  keysDown.current = {};
+                  playSfx("pop");
+                  setActiveDialog({
+                    speaker: "Papai Carlos 👨‍👧",
+                    role: "Família • Escolha do Inicial",
+                    avatarSprite: "parent",
+                    text: `Espere aí, ${playerName}! Não vá para a grama alta lá fora sem o seu primeiro parceiro Pokémon! Venha até a mesa escolher seu inicial!`,
+                  });
+                  setIsStarterModalOpen(true);
+                  return;
+                }
                 handleExitInterior();
                 return;
               }
@@ -3702,6 +3928,17 @@ export default function RpgPage() {
                 p.moveProgress = 0;
                 setCurrentZone("Casa da Família • Térreo");
                 setVictoryNotice("Desceu para o 1º Andar: Sala & Cozinha 🏡");
+                if (pokemonList.length === 0) {
+                  setTimeout(() => {
+                    setActiveDialog({
+                      speaker: "Papai Carlos 👨‍👧",
+                      role: "Família • Escolha do Inicial",
+                      avatarSprite: "parent",
+                      text: `Bom dia, ${playerName}! Venha até a mesa da sala: preparei os 4 Pokémon iniciais (Charmander, Bulbasaur, Squirtle e Pikachu) para você escolher seu primeiro parceiro!`,
+                    });
+                    setIsStarterModalOpen(true);
+                  }, 400);
+                }
                 return;
               }
             } else if (activeInterior.buildingId === "rival_house") {
@@ -5259,13 +5496,17 @@ export default function RpgPage() {
       {/* Top Retro Navigation Header */}
       <header className="bg-slate-900 border-b border-slate-800 px-4 py-3 flex flex-wrap items-center justify-between gap-3 shadow-md sticky top-0 z-30">
         <div className="flex items-center gap-3">
-          <Link
-            href={`/vila?ano=${currentYear}`}
-            className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 px-3 py-1.5 rounded-xl border border-slate-700 text-xs font-bold transition shadow"
+          <button
+            onClick={() => {
+              playSfx("click");
+              setActiveProfileId(null);
+            }}
+            className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 px-3 py-1.5 rounded-xl border border-slate-700 text-xs font-bold transition shadow cursor-pointer"
+            title="Trocar de Treinadora (Cecília / Bianca)"
           >
             <ArrowLeft className="w-4 h-4 text-amber-400" />
-            <span>Voltar à Vila</span>
-          </Link>
+            <span>Trocar Treinadora</span>
+          </button>
 
           <div className="flex items-center gap-2">
             <span className="bg-red-600 text-white font-black text-[11px] px-2.5 py-0.5 rounded-full tracking-wider shadow-md border border-red-400">
@@ -5529,11 +5770,7 @@ export default function RpgPage() {
 
           {/* PokéCelular Trigger */}
           <button
-            onClick={() => {
-              setIsPhoneOpen(true);
-              setHasUnreadPhone(false);
-              playSfx("open");
-            }}
+            onClick={openPhoneIfAllowed}
             className="relative flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 rounded-xl border border-sky-400 text-white text-xs font-black shadow-md cursor-pointer transition active:scale-95"
             title="Abrir PokéCelular de Papai Carlos e Mamãe Renata"
           >
@@ -5623,10 +5860,8 @@ export default function RpgPage() {
           {phoneToast && (
             <div
               onClick={() => {
-                setIsPhoneOpen(true);
-                setHasUnreadPhone(false);
                 setPhoneToast(null);
-                playSfx("open");
+                openPhoneIfAllowed();
               }}
               className="absolute top-3 right-4 z-20 bg-gradient-to-r from-sky-600 to-indigo-700 border-2 border-sky-300 text-white px-4 py-2 rounded-2xl shadow-2xl flex items-center gap-3 cursor-pointer animate-bounce active:scale-95 transition"
             >
@@ -5779,11 +6014,7 @@ export default function RpgPage() {
 
               {/* PokéCelular button */}
               <button
-                onClick={() => {
-                  setIsPhoneOpen(true);
-                  setHasUnreadPhone(false);
-                  playSfx("open");
-                }}
+                onClick={openPhoneIfAllowed}
                 className="flex items-center gap-1.5 bg-slate-900/90 hover:bg-slate-800 border border-sky-400/60 text-white px-3 py-1.5 rounded-2xl shadow-xl transition active:scale-95 cursor-pointer backdrop-blur-md"
                 title="Abrir PokéCelular"
               >
@@ -6036,11 +6267,7 @@ export default function RpgPage() {
 
               {/* PokéCelular Touch Button */}
               <button
-                onClick={() => {
-                  setIsPhoneOpen(true);
-                  setHasUnreadPhone(false);
-                  playSfx("open");
-                }}
+                onClick={openPhoneIfAllowed}
                 className="w-11 h-11 rounded-2xl gba-btn-sub-tactile flex flex-col items-center justify-center text-white cursor-pointer relative"
                 title="Abrir PokéCelular"
               >
@@ -6567,6 +6794,14 @@ export default function RpgPage() {
           await performCloudSave(true);
         }}
         isSyncing={cloudSyncStatus.isSaving}
+      />
+
+      {/* Starter Pokemon Selection Modal (FireRed Choice with Papai Carlos) */}
+      <StarterSelectionModal
+        isOpen={isStarterModalOpen}
+        playerName={playerName}
+        year={currentYear}
+        onSelectStarter={handleSelectStarter}
       />
 
       {/* Help Modal */}

@@ -112,56 +112,37 @@ export async function testSupabaseConnection(): Promise<{ ok: boolean; message: 
 
 /**
  * Default game state for a new sister profile.
+ * Starts directly on the 2nd Floor of Casa da Família (Pallet Town),
+ * with clean initial coins, 0 inventory, empty Pokémon list, and empty question history,
+ * awaiting the opening narrative with Papai Carlos.
  */
 export function getDefaultProfileSave(profileId: ProfileId): RpgSaveData {
   const isCecilia = profileId === "cecilia";
   const year: StudentYear = isCecilia ? 4 : 2;
-  const starterPokedexId = isCecilia ? 25 : 133;
-  const starterName = isCecilia ? "Pikachu" : "Eevee";
 
   return {
     id: profileId,
     playerName: isCecilia ? "Cecília" : "Bianca",
     year,
     pin: isCecilia ? "4444" : "2222",
-    x: 20,
-    y: 29,
-    direction: "up",
-    currentZone: "Vila da Família",
-    coins: 180,
-    xp: 420,
+    x: 2,
+    y: isCecilia ? 6 : 5,
+    direction: "down",
+    currentZone: "Casa da Família • Quarto das Meninas",
+    coins: 50,
+    xp: 0,
     inventory: {
-      pokeballs: 5,
-      potions: 2,
-      antidotes: 2,
-      berries: 3,
-      thunderStones: isCecilia ? 1 : 0,
-      waterStones: !isCecilia ? 1 : 0,
+      pokeballs: 0,
+      potions: 0,
+      antidotes: 0,
+      berries: 0,
+      thunderStones: 0,
+      waterStones: 0,
       fireStones: 0,
       leafStones: 0,
       moonStones: 0,
     },
-    pokemonList: [
-      {
-        id: `starter-${profileId}`,
-        name: starterName,
-        species: starterName,
-        emoji: isCecilia ? "⚡" : "🦊",
-        pokedexId: starterPokedexId,
-        artworkUrl: getPokemonArtworkUrl(starterPokedexId),
-        spriteUrl: getPokemonSpriteUrl(starterPokedexId),
-        animatedUrl: getPokemonAnimatedUrl(starterPokedexId),
-        type: isCecilia ? "Elétrico" : "Normal",
-        typeColor: isCecilia ? "#eab308" : "#b45309",
-        level: 5,
-        exp: 0,
-        maxEnergy: 100,
-        energy: 100,
-        status: "healthy",
-        caughtAt: "Início da Jornada",
-        friendship: 90,
-      },
-    ],
+    pokemonList: [],
     stolenPokemonList: [],
     unlockedRoutes: {
       matematica: false,
@@ -191,45 +172,12 @@ export function getDefaultProfileSave(profileId: ProfileId): RpgSaveData {
       accessoryId: "explorer_backpack",
     },
     unlockedWardrobeItems: ["firered_classic", "red_cap", "explorer_backpack"],
-    activeQuest: {
-      id: `quest-initial-${profileId}`,
-      sender: "papai",
-      title: isCecilia
-        ? "Missão Urgente do Pai: Matemática na Metrópole"
-        : "Missão Urgente do Pai: Ciências no Vale",
-      description: isCecilia
-        ? "Filha Cecília, vá até a Metrópole da Matemática resolver os desafios de tabuada! Conclua esse pedido antes de ir a outros lugares!"
-        : "Filha Bianca, vá até o Vale das Ciências estudar os seres vivos e vencer a barreira da Equipe Rocket!",
-      targetSubjectId: isCecilia ? "matematica" : "ciencias",
-      targetCityName: isCecilia ? "Metrópole da Matemática" : "Vale das Ciências",
-      rewardCoins: 50,
-      rewardXp: 40,
-      requiredCount: 1,
-      currentCount: 0,
-      isCompleted: false,
-    },
-    phoneMessages: [
-      {
-        id: "msg-1",
-        sender: "papai",
-        senderName: "Papai Carlos",
-        avatarEmoji: "👨‍👧",
-        text: isCecilia
-          ? "Filha Cecília, o Professor Pitágoras na Metrópole da Matemática precisa da sua ajuda com a tabuada! Vá direto para lá e conclua seu dever escolar!"
-          : "Filha Bianca, a Dra. Flora mandou um recado sobre as plantinhas no Vale das Ciências! Vá lá primeiro cumprir a missão!",
-        timeAgo: "Agora",
-        targetSubjectId: isCecilia ? "matematica" : "ciencias",
-        targetCityName: isCecilia ? "Metrópole da Matemática" : "Vale das Ciências",
-        rewardCoins: 50,
-        rewardXp: 40,
-        isCompleted: false,
-        requiredToUnlockRoute: true,
-      },
-    ],
+    activeQuest: null,
+    phoneMessages: [],
     rivalConfig: {
       name: "Gary",
       gender: "boy",
-      starterPokedexId: isCecilia ? 133 : 25,
+      starterPokedexId: isCecilia ? 4 : 1,
       defeatedEncounters: [],
     },
     answeredQuestionIds: [],
@@ -244,6 +192,21 @@ export async function loadProfileSave(profileId: ProfileId): Promise<{
   data: RpgSaveData;
   fromCloud: boolean;
 }> {
+  // Wipe legacy local caches once on updated version to guarantee fresh clean start
+  if (typeof window !== "undefined") {
+    try {
+      if (localStorage.getItem("vila_firered_reset_2026") !== "done") {
+        localStorage.removeItem("vila_rpg_save_cecilia");
+        localStorage.removeItem("vila_rpg_save_bianca");
+        localStorage.removeItem("vila_exams");
+        localStorage.removeItem("rpg_active_profile");
+        localStorage.setItem("vila_firered_reset_2026", "done");
+      }
+    } catch (e) {
+      console.warn("Storage migration error:", e);
+    }
+  }
+
   const localKey = `vila_rpg_save_${profileId}`;
   let localData: RpgSaveData | null = null;
 
