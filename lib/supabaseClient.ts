@@ -6,6 +6,7 @@ import { getPokemonArtworkUrl, getPokemonSpriteUrl, getPokemonAnimatedUrl } from
 export const SUPABASE_URL_KEY = "vila_supabase_url";
 export const SUPABASE_ANON_KEY = "vila_supabase_anon_key";
 export const ACTIVE_PROFILE_KEY = "vila_rpg_active_profile";
+export const MASTER_RESET_KEY = "vila_master_reset_v3_nov2026";
 
 /**
  * Returns Supabase credentials from environment variables or client-side custom config.
@@ -129,7 +130,7 @@ export function getDefaultProfileSave(profileId: ProfileId): RpgSaveData {
     y: isCecilia ? 6 : 5,
     direction: "down",
     currentZone: "Casa da Família • Quarto das Meninas",
-    coins: 50,
+    coins: 20,
     xp: 0,
     inventory: {
       pokeballs: 0,
@@ -181,8 +182,64 @@ export function getDefaultProfileSave(profileId: ProfileId): RpgSaveData {
       defeatedEncounters: [],
     },
     answeredQuestionIds: [],
+    completedSchoolChapters: [],
+    wildHuntQuota: 0,
+    tutorialStep: 1,
     updatedAt: new Date().toISOString(),
   };
+}
+
+/**
+ * Resets BOTH sisters' profiles (Cecília & Bianca) completely to zero
+ * in localStorage AND in Supabase cloud (if configured), plus clears live sync.
+ */
+export async function resetAllProfilesToZero(): Promise<{
+  success: boolean;
+  cloudReset: boolean;
+}> {
+  const ceciliaFresh = getDefaultProfileSave("cecilia");
+  const biancaFresh = getDefaultProfileSave("bianca");
+
+  if (typeof window !== "undefined") {
+    try {
+      localStorage.removeItem("vila_rpg_save_cecilia");
+      localStorage.removeItem("vila_rpg_save_bianca");
+      localStorage.removeItem("vila_exams");
+      localStorage.removeItem(ACTIVE_PROFILE_KEY);
+      localStorage.removeItem("rpg_active_profile");
+      localStorage.setItem("vila_rpg_save_cecilia", JSON.stringify(ceciliaFresh));
+      localStorage.setItem("vila_rpg_save_bianca", JSON.stringify(biancaFresh));
+      localStorage.setItem(MASTER_RESET_KEY, "done");
+    } catch (e) {
+      console.warn("Error resetting local storage:", e);
+    }
+
+    // Clear server in-memory multiplayer state
+    fetch("/api/rpg/sync", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ resetAll: true }),
+    }).catch(() => {});
+  }
+
+  const client = getSupabaseClient();
+  if (!client) {
+    return { success: true, cloudReset: false };
+  }
+
+  try {
+    const [resC, resB] = await Promise.all([
+      saveProfileSave(ceciliaFresh),
+      saveProfileSave(biancaFresh),
+    ]);
+    return {
+      success: true,
+      cloudReset: Boolean(resC.cloudSaved && resB.cloudSaved),
+    };
+  } catch (err) {
+    console.warn("Failed to reset profiles in Supabase:", err);
+    return { success: true, cloudReset: false };
+  }
 }
 
 /**
@@ -192,18 +249,16 @@ export async function loadProfileSave(profileId: ProfileId): Promise<{
   data: RpgSaveData;
   fromCloud: boolean;
 }> {
-  // Wipe legacy local caches once on updated version to guarantee fresh clean start
+  // Execute one-time master reset (local + Supabase cloud) so both sisters start from zero
   if (typeof window !== "undefined") {
     try {
-      if (localStorage.getItem("vila_firered_reset_2026") !== "done") {
-        localStorage.removeItem("vila_rpg_save_cecilia");
-        localStorage.removeItem("vila_rpg_save_bianca");
-        localStorage.removeItem("vila_exams");
-        localStorage.removeItem("rpg_active_profile");
-        localStorage.setItem("vila_firered_reset_2026", "done");
+      if (localStorage.getItem(MASTER_RESET_KEY) !== "done") {
+        await resetAllProfilesToZero();
+        const freshDefault = getDefaultProfileSave(profileId);
+        return { data: freshDefault, fromCloud: false };
       }
     } catch (e) {
-      console.warn("Storage migration error:", e);
+      console.warn("Master reset migration error:", e);
     }
   }
 
@@ -241,8 +296,8 @@ export async function loadProfileSave(profileId: ProfileId): Promise<{
           y: typeof data.y === "number" ? data.y : 29,
           direction: data.direction || "up",
           currentZone: data.current_zone || "Vila da Família",
-          coins: typeof data.coins === "number" ? data.coins : 180,
-          xp: typeof data.xp === "number" ? data.xp : 420,
+          coins: typeof data.coins === "number" ? data.coins : 20,
+          xp: typeof data.xp === "number" ? data.xp : 0,
           inventory: data.inventory || {},
           pokemonList: Array.isArray(data.pokemon_list) ? data.pokemon_list : [],
           stolenPokemonList: Array.isArray(data.stolen_pokemon_list) ? data.stolen_pokemon_list : [],
@@ -255,6 +310,8 @@ export async function loadProfileSave(profileId: ProfileId): Promise<{
           phoneMessages: Array.isArray(data.phone_messages) ? data.phone_messages : [],
           rivalConfig: data.rival_config || null,
           answeredQuestionIds: Array.isArray(data.answered_question_ids) ? data.answered_question_ids : [],
+          completedSchoolChapters: localData?.completedSchoolChapters || [],
+          wildHuntQuota: typeof localData?.wildHuntQuota === "number" ? localData.wildHuntQuota : 0,
           updatedAt: data.updated_at || new Date().toISOString(),
         };
 

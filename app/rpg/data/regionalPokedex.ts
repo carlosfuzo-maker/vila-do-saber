@@ -5,6 +5,10 @@ import {
   getPokemonArtworkUrl,
   getPokemonSpriteUrl,
   getPokemonAnimatedUrl,
+  getPokemonSpawnCategory,
+  rollOfficialSpawnCategory,
+  OFFICIAL_SPAWN_RATES,
+  getSpawnRateMeta,
 } from "./kantoPokedex";
 import { JOHTO_POKEDEX_100, JohtoPokemonData } from "./johtoPokedex";
 import { HOENN_POKEDEX_135, HoennPokemonData } from "./hoennPokedex";
@@ -103,22 +107,20 @@ export function getModernWaterPool(): ModernPokemonData[] {
 
 /**
  * Weighted regional wild encounter generator:
- * - Respeita a Geração da Região:
- *    - Geração 1: Kanto (Vila da Família e Cidade dos Números)
- *    - Geração 2: Johto (Laboratório de Ciências)
- *    - Geração 3: Hoenn (Grande Biblioteca Encantada)
- *    - Geração 4: Sinnoh (Porto Global & English Hub)
- *    - Geração 5: Unova (Bosque Ecológico & Reserva dos Pets)
- *    - Geração 6: Modernas (Aeroporto & Agência Fuzo Viagens - Kalos, Alola, Galar, Paldea)
+ * - Respeita a Geração da Região (Kanto, Johto, Hoenn, Sinnoh, Unova, Modernas)
  * - Respeita se é terra seca ("T") ou água/surf ("W" / "U")
- * - Pesos por raridade:
- *    - Básicos (stage 1 / basic): Peso 100 (~88%)
- *    - Evoluídos (stage 2 / evolved): Peso 14 (~10%)
- *    - Raros / Lendários (stage 3 / rare): Peso 2 (~2%)
+ * - Segue rigorosamente as Novas Taxas Oficiais de Spawn:
+ *    - Comuns (common): 55% de chance
+ *    - Incomuns (uncommon): 20% de chance
+ *    - Difíceis (hard): 8% de chance
+ *    - Raros (rare, ex: Dratini): 5% de chance
+ *    - Épicos / Fósseis (epic): 1,5% de chance (obtidos via laboratório/eventos)
+ *    - Lendários (legendary): 0,5% de chance (exclusivos de desafios finais e provas de maestria)
  */
 export function getRegionalWeightedEncounter(
   generation: RpgGeneration,
-  isWater: boolean
+  isWater: boolean,
+  options?: { allowLegendary?: boolean; allowEpic?: boolean }
 ): AnyRegionalPokemon {
   let pool: AnyRegionalPokemon[];
 
@@ -142,28 +144,48 @@ export function getRegionalWeightedEncounter(
     if (!pool || pool.length === 0) pool = getKantoLandPool();
   }
 
-  const weights: Record<RarityTier, number> = {
-    basic: 100,
-    evolved: 14,
-    rare: 2,
-  };
+  const targetCategory = rollOfficialSpawnCategory(options);
+  let categoryPool = pool.filter((p) => getPokemonSpawnCategory(p) === targetCategory);
 
-  const totalWeight = pool.reduce((acc, p) => acc + (weights[p.rarityTier] || 10), 0);
-  let random = Math.random() * totalWeight;
-
-  for (const pokemon of pool) {
-    const w = weights[pokemon.rarityTier] || 10;
-    if (random < w) {
-      return pokemon;
+  // Ensure Dratini (#147) is always part of the 5% Rare pool in Kanto/Gen 1
+  if (targetCategory === "rare" && generation === 1) {
+    const dratini = KANTO_POKEDEX_151.find((p) => p.pokedexId === 147);
+    if (dratini && !categoryPool.some((p) => p.pokedexId === 147)) {
+      categoryPool = [...categoryPool, dratini];
     }
-    random -= w;
   }
 
-  return pool[0];
+  // If the specific water/land subset has no Pokémon for that tier (e.g. water legendaries), search across the generation
+  if (categoryPool.length === 0) {
+    const fullGenPool =
+      generation === 6
+        ? MODERN_POKEDEX_376
+        : generation === 5
+        ? UNOVA_POKEDEX_156
+        : generation === 4
+        ? SINNOH_POKEDEX_107
+        : generation === 3
+        ? HOENN_POKEDEX_135
+        : generation === 2
+        ? JOHTO_POKEDEX_100
+        : KANTO_POKEDEX_151;
+    categoryPool = fullGenPool.filter((p) => getPokemonSpawnCategory(p) === targetCategory);
+  }
+
+  if (categoryPool.length === 0) {
+    categoryPool = pool;
+  }
+
+  const chosen = categoryPool[Math.floor(Math.random() * categoryPool.length)] || pool[0];
+  return chosen;
 }
 
 export {
   getPokemonArtworkUrl,
   getPokemonSpriteUrl,
   getPokemonAnimatedUrl,
+  getPokemonSpawnCategory,
+  rollOfficialSpawnCategory,
+  OFFICIAL_SPAWN_RATES,
+  getSpawnRateMeta,
 };

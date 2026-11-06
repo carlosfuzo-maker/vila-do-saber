@@ -1,3 +1,5 @@
+import { SpawnCategory } from "../rpgTypes";
+
 export type EvolutionStoneType =
   | "fire"
   | "water"
@@ -33,7 +35,170 @@ export interface KantoPokemonData {
   description: string;
   stage: 1 | 2 | 3;
   rarityTier: RarityTier;
+  spawnCategory?: SpawnCategory;
   evolutions?: EvolutionData[];
+}
+
+export interface SpawnRateMeta {
+  category: SpawnCategory;
+  label: string;
+  percentage: number;
+  percentageDisplay: string;
+  defaultCatchRate: number;
+  berryCatchRate: number;
+  badgeColor: string;
+  description: string;
+}
+
+export const OFFICIAL_SPAWN_RATES: Record<SpawnCategory, SpawnRateMeta> = {
+  common: {
+    category: "common",
+    label: "Comum",
+    percentage: 55,
+    percentageDisplay: "55%",
+    defaultCatchRate: 0.88,
+    berryCatchRate: 1.0,
+    badgeColor: "#64748b",
+    description: "Comum (55% de aparição • ~88% de captura)",
+  },
+  uncommon: {
+    category: "uncommon",
+    label: "Incomum",
+    percentage: 20,
+    percentageDisplay: "20%",
+    defaultCatchRate: 0.72,
+    berryCatchRate: 0.95,
+    badgeColor: "#16a34a",
+    description: "Incomum (20% de aparição • ~72% de captura)",
+  },
+  hard: {
+    category: "hard",
+    label: "Difícil",
+    percentage: 8,
+    percentageDisplay: "8%",
+    defaultCatchRate: 0.55,
+    berryCatchRate: 0.85,
+    badgeColor: "#0284c7",
+    description: "Difícil (8% de aparição • ~55% de captura)",
+  },
+  rare: {
+    category: "rare",
+    label: "Raro",
+    percentage: 5,
+    percentageDisplay: "5%",
+    defaultCatchRate: 0.42,
+    berryCatchRate: 0.75,
+    badgeColor: "#9333ea",
+    description: "Raro, ex: Dratini (5% de aparição • ~42% de captura)",
+  },
+  epic: {
+    category: "epic",
+    label: "Épico / Fóssil",
+    percentage: 1.5,
+    percentageDisplay: "1,5%",
+    defaultCatchRate: 0.3,
+    berryCatchRate: 0.62,
+    badgeColor: "#d97706",
+    description: "Épico / Fóssil (1,5% de aparição • ~30% de captura)",
+  },
+  legendary: {
+    category: "legendary",
+    label: "Lendário",
+    percentage: 0.5,
+    percentageDisplay: "0,5%",
+    defaultCatchRate: 0.2,
+    berryCatchRate: 0.48,
+    badgeColor: "#e11d48",
+    description: "Lendário (0,5% de aparição • ~20% de captura)",
+  },
+};
+
+const LEGENDARY_POKEDEX_IDS = new Set<number>([
+  // Gen 1
+  144, 145, 146, 150, 151,
+  // Gen 2
+  243, 244, 245, 249, 250, 251,
+  // Gen 3
+  377, 378, 379, 380, 381, 382, 383, 384, 385, 386,
+  // Gen 4
+  480, 481, 482, 483, 484, 485, 486, 487, 488, 489, 490, 491, 492, 493,
+  // Gen 5
+  494, 638, 639, 640, 641, 642, 643, 644, 645, 646, 647, 648, 649,
+  // Gen 6-9 Legendaries/Mythicals
+  716, 717, 718, 719, 720, 721, 785, 786, 787, 788, 789, 790, 791, 792, 800, 801, 802,
+  888, 889, 890, 891, 892, 893, 894, 895, 896, 897, 898, 1001, 1002, 1003, 1004, 1007, 1008, 1024, 1025,
+]);
+
+const EPIC_FOSSIL_POKEDEX_IDS = new Set<number>([
+  // Gen 1 Fossils & Lab/Event Epics
+  131, 137, 138, 139, 140, 141, 142, 143,
+  // Gen 2-9 Fossils & Event Epics
+  185, 201, 233, 345, 346, 347, 348, 369, 408, 409, 410, 411, 442, 474, 479,
+  564, 565, 566, 567, 570, 571, 696, 697, 698, 699, 880, 881, 882, 883,
+]);
+
+const RARE_POKEDEX_IDS = new Set<number>([
+  // Dratini line & iconic Kanto rares
+  147, 148, 149, 3, 6, 9, 31, 34, 38, 59, 65, 68, 76, 94, 95,
+  103, 106, 107, 113, 115, 121, 123, 125, 126, 127, 128, 130, 134, 135, 136,
+  // Other regional pseudo-legendaries & rares
+  246, 247, 248, 371, 372, 373, 374, 375, 376, 443, 444, 445, 447, 448, 633, 634, 635, 636, 637,
+]);
+
+const HARD_POKEDEX_IDS = new Set<number>([
+  // Starters, Pikachu, Eevee, Abra, Vulpix, Growlithe, Clefairy, etc.
+  1, 2, 4, 5, 7, 8, 12, 15, 18, 25, 26, 35, 36, 37, 45, 58, 62, 63, 64,
+  71, 77, 78, 83, 93, 108, 112, 114, 122, 124, 132, 133,
+]);
+
+const UNCOMMON_POKEDEX_IDS = new Set<number>([
+  11, 14, 17, 20, 22, 24, 28, 30, 33, 39, 40, 42, 44, 47, 49, 51, 53,
+  54, 55, 56, 57, 61, 67, 70, 73, 75, 79, 80, 81, 82, 85, 86, 87, 88, 89,
+  90, 91, 92, 96, 97, 99, 100, 101, 102, 104, 105, 109, 110, 111, 116, 117, 119, 120,
+]);
+
+/**
+ * Classifies any Pokémon into the 6 official spawn categories:
+ * - common (55%)
+ * - uncommon (20%)
+ * - hard (8%)
+ * - rare (5% - ex: Dratini)
+ * - epic (1,5% - Épicos / Fósseis)
+ * - legendary (0,5% - Lendários)
+ */
+export function getPokemonSpawnCategory(pokemon: {
+  pokedexId: number;
+  stage?: 1 | 2 | 3;
+  rarityTier?: RarityTier;
+  baseCatchRate?: number;
+  spawnCategory?: SpawnCategory;
+}): SpawnCategory {
+  if (pokemon.spawnCategory) return pokemon.spawnCategory;
+  const id = pokemon.pokedexId;
+  if (LEGENDARY_POKEDEX_IDS.has(id)) return "legendary";
+  if (EPIC_FOSSIL_POKEDEX_IDS.has(id)) return "epic";
+  if (RARE_POKEDEX_IDS.has(id)) return "rare";
+  if (HARD_POKEDEX_IDS.has(id)) return "hard";
+  if (UNCOMMON_POKEDEX_IDS.has(id)) return "uncommon";
+
+  // Fallback heuristics for regional Pokédex (#152+)
+  if (pokemon.rarityTier === "rare") {
+    if ((pokemon.baseCatchRate ?? 0.5) <= 0.25) return "legendary";
+    if (pokemon.stage === 3) return "rare";
+    return "hard";
+  }
+  if (pokemon.rarityTier === "evolved" || pokemon.stage === 2) {
+    if ((pokemon.baseCatchRate ?? 0.65) <= 0.55) return "hard";
+    return "uncommon";
+  }
+  if ((pokemon.baseCatchRate ?? 0.85) <= 0.75) {
+    return "uncommon";
+  }
+  return "common";
+}
+
+export function getSpawnRateMeta(category: SpawnCategory): SpawnRateMeta {
+  return OFFICIAL_SPAWN_RATES[category] || OFFICIAL_SPAWN_RATES.common;
 }
 
 export function getPokemonArtworkUrl(pokedexId: number): string {
@@ -395,30 +560,85 @@ export function getPokemonById(id: number): KantoPokemonData | undefined {
 }
 
 /**
- * Weighted wild encounter generator:
- * - Pokémons Básicos (stage 1 / basic): Chance ALTA (peso 100)
- * - Pokémons com Evolução (stage 2 / evolved): MUITO DIFÍCEIS (peso 14)
- * - Pokémons Raros / Lendários / Stage 3: CHANCE BEM BAIXA (peso 2)
+ * Rolls one of the 6 official spawn categories using the exact target rates:
+ * - Comuns (common): 55%
+ * - Incomuns (uncommon): 20%
+ * - Difíceis (hard): 8%
+ * - Raros (rare, ex: Dratini): 5%
+ * - Épicos / Fósseis (epic): 1,5%
+ * - Lendários (legendary): 0,5%
  */
-export function getWeightedEncounter(isWater: boolean): KantoPokemonData {
-  const pool = isWater ? getWaterPokemonPool() : getLandPokemonPool();
-  
-  const weights: Record<RarityTier, number> = {
-    basic: 100,
-    evolved: 14,
-    rare: 2,
-  };
+export function rollOfficialSpawnCategory(options?: {
+  allowLegendary?: boolean;
+  allowEpic?: boolean;
+}): SpawnCategory {
+  const allowLegendary = options?.allowLegendary ?? true;
+  const allowEpic = options?.allowEpic ?? true;
 
-  const totalWeight = pool.reduce((acc, p) => acc + (weights[p.rarityTier] || 10), 0);
-  let random = Math.random() * totalWeight;
+  // Roll from 0 to 90 (exact sum: 55 + 20 + 8 + 5 + 1.5 + 0.5 = 90)
+  // Or out of 100 where the remaining 10% defaults to common when an encounter is already triggered
+  const roll = Math.random() * 100;
 
-  for (const pokemon of pool) {
-    const w = weights[pokemon.rarityTier] || 10;
-    if (random < w) {
-      return pokemon;
+  if (roll < 0.5) {
+    return allowLegendary ? "legendary" : "rare";
+  }
+  if (roll < 0.5 + 1.5) {
+    // 0.5 .. < 2.0 -> 1.5%
+    return allowEpic ? "epic" : "rare";
+  }
+  if (roll < 2.0 + 5.0) {
+    // 2.0 .. < 7.0 -> 5%
+    return "rare";
+  }
+  if (roll < 7.0 + 8.0) {
+    // 7.0 .. < 15.0 -> 8%
+    return "hard";
+  }
+  if (roll < 15.0 + 20.0) {
+    // 15.0 .. < 35.0 -> 20%
+    return "uncommon";
+  }
+  // 35.0 .. 90.0 (55%) + fallback -> Comuns
+  return "common";
+}
+
+/**
+ * Weighted wild encounter generator following the official spawn table:
+ * - Comuns: 55%
+ * - Incomuns: 20%
+ * - Difíceis: 8%
+ * - Raros (ex: Dratini): 5%
+ * - Épicos / Fósseis: 1,5%
+ * - Lendários: 0,5%
+ */
+export function getWeightedEncounter(
+  isWater: boolean,
+  options?: { allowLegendary?: boolean; allowEpic?: boolean }
+): KantoPokemonData {
+  const basePool = isWater ? getWaterPokemonPool() : getLandPokemonPool();
+  const targetCategory = rollOfficialSpawnCategory(options);
+
+  let categoryPool = basePool.filter((p) => getPokemonSpawnCategory(p) === targetCategory);
+
+  // Include Dratini (#147) in the 5% Rare pool even in tall grass near lakes/routes
+  if (targetCategory === "rare") {
+    const dratini = KANTO_POKEDEX_151.find((p) => p.pokedexId === 147);
+    if (dratini && !categoryPool.some((p) => p.pokedexId === 147)) {
+      categoryPool = [...categoryPool, dratini];
     }
-    random -= w;
   }
 
-  return pool[0];
+  // Fallback across full Kanto pool if a category has no water/land match (e.g. water legendaries in Gen 1)
+  if (categoryPool.length === 0) {
+    categoryPool = KANTO_POKEDEX_151.filter((p) => getPokemonSpawnCategory(p) === targetCategory);
+  }
+  if (categoryPool.length === 0) {
+    categoryPool = basePool;
+  }
+
+  const chosen = categoryPool[Math.floor(Math.random() * categoryPool.length)] || basePool[0];
+  return {
+    ...chosen,
+    spawnCategory: getPokemonSpawnCategory(chosen),
+  };
 }

@@ -34,7 +34,7 @@ export const INDIGO_PLATEAU_INTERACTABLES: IndigoPlateauInteractable[] = [
     y: 4,
     name: "Mestre da Liga Pokémon 👑",
     type: "champion",
-    dialogText: "Bem-vinda ao cume da Liga Pokémon, Bianca! Somente treinadoras que dominaram a Matemática, a Língua Portuguesa, as Ciências e o Inglês conseguem subir estes degraus! Você está pronta para o Desafio Supremo dos Campeões?",
+    dialogText: "Bem-vinda ao cume da Liga Pokémon, Campeã! Somente treinadoras que dominaram a Matemática, a Língua Portuguesa, as Ciências e o Inglês conseguem subir estes degraus! Você está pronta para o Desafio Supremo dos Campeões?",
   },
 
   // League Poké-PC at the side

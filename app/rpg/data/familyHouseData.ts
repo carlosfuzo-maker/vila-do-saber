@@ -44,13 +44,16 @@ if (typeof window !== "undefined") {
 // Interactable objects in Floor 1 (Térreo: Sala, Cozinha e Pais)
 // Aligned to authentic FireRed 12x9 living room pixel-art map
 export const FLOOR_1_INTERACTABLES: HouseInteractable[] = [
-  // Stairs Up to Floor 2 (Staircase at top right: x: 9..10, y: 1)
+  // Stairs Up to Floor 2 (Staircase at top right: x: 8..10, y: 1..2)
+  { x: 8, y: 1, name: "Escada para o 2º Andar", type: "stairs_up", floor: 1 },
   { x: 9, y: 1, name: "Escada para o 2º Andar", type: "stairs_up", floor: 1 },
   { x: 10, y: 1, name: "Escada para o 2º Andar", type: "stairs_up", floor: 1 },
 
-  // Door Exit Threshold (Exclusively on the bottom red doormat: x: 3..4, y: 8)
+  // Door Exit Threshold (Bottom red doormat: x: 2..5, y: 8)
+  { x: 2, y: 8, name: "Porta de Saída", type: "exit", floor: 1 },
   { x: 3, y: 8, name: "Porta de Saída", type: "exit", floor: 1 },
   { x: 4, y: 8, name: "Porta de Saída", type: "exit", floor: 1 },
+  { x: 5, y: 8, name: "Porta de Saída", type: "exit", floor: 1 },
 
   // Kitchen Area (Top Left: Sink at x: 1, Cupboard at x: 2, Fridge/Trash at x: 3)
   { x: 1, y: 1, name: "Pia da Cozinha", type: "plant", floor: 1 },
@@ -76,9 +79,13 @@ export const FLOOR_1_INTERACTABLES: HouseInteractable[] = [
 // Interactable objects in Floor 2 (Quarto das Meninas: Camas e Poké-PC)
 // Aligned to authentic FireRed 11x9 bedroom pixel-art map
 export const FLOOR_2_INTERACTABLES: HouseInteractable[] = [
-  // Stairs Down to Floor 1 (x: 7..8, y: 1)
+  // Stairs Down to Floor 1 (x: 7..9, y: 1..2 - full staircase & landing mat)
   { x: 7, y: 1, name: "Escada para o Térreo", type: "stairs_down", floor: 2 },
   { x: 8, y: 1, name: "Escada para o Térreo", type: "stairs_down", floor: 2 },
+  { x: 9, y: 1, name: "Escada para o Térreo", type: "stairs_down", floor: 2 },
+  { x: 7, y: 2, name: "Escada para o Térreo", type: "stairs_down", floor: 2 },
+  { x: 8, y: 2, name: "Escada para o Térreo", type: "stairs_down", floor: 2 },
+  { x: 9, y: 2, name: "Escada para o Térreo", type: "stairs_down", floor: 2 },
 
   // Study Desk & Poké-PC (Top Left: x: 0..1, y: 1)
   { x: 0, y: 1, name: "Poké-PC de Estudos", type: "pc", floor: 2 },
@@ -89,7 +96,7 @@ export const FLOOR_2_INTERACTABLES: HouseInteractable[] = [
   { x: 3, y: 1, name: "Estante de Livros Escolares", type: "bookshelf", floor: 2 },
   { x: 4, y: 1, name: "Armário de Brinquedos", type: "bookshelf", floor: 2 },
 
-  // Video Game Console on Center Rug (x: 4..5, y: 4..5)
+  // Video Game Console on Center Rug (x: 4..5, y: 4)
   { x: 4, y: 4, name: "Videogame 16-bits & TV", type: "console", floor: 2 },
   { x: 5, y: 4, name: "Videogame 16-bits & TV", type: "console", floor: 2 },
 
@@ -106,15 +113,15 @@ export function isHouseTileWalkable(x: number, y: number, floor: 1 | 2): boolean
   if (floor === 1) {
     // Room boundary walls (Cols: 0..11, Rows: 0..8)
     if (x < 1 || x > 10 || y < 1 || y > 7) {
-      // Exit door mat at bottom center (x: 3..4, y: 8) is walkable to leave
-      if ((x === 3 || x === 4) && y === 8) return true;
+      // Exit door mat at bottom center (x: 2..5, y: 8) is walkable to leave
+      if (x >= 2 && x <= 5 && y === 8) return true;
       return false;
     }
 
     // Top wall furniture
     if (y === 1) {
-      // Stairs up at x: 9..10 are walkable to trigger stairs
-      if (x === 9 || x === 10) return true;
+      // Stairs up at x: 8..10 are walkable to trigger stairs
+      if (x >= 8 && x <= 10) return true;
       return false; // Kitchen counters, sink, TV
     }
 
@@ -128,23 +135,23 @@ export function isHouseTileWalkable(x: number, y: number, floor: 1 | 2): boolean
 
     return true;
   } else {
-    // Floor 2 (Quarto das Meninas)
-    if (x < 1 || x > 9 || y < 1 || y > 7) {
+    // Floor 2 (Quarto das Meninas - 11x9 grid)
+    if (x < 1 || x > 10 || y < 1 || y > 7) {
       return false;
     }
 
     // Top wall furniture
     if (y === 1) {
-      // Stairs down at x: 7..8 are walkable to trigger stairs
-      if (x === 7 || x === 8) return true;
-      return false; // Desk, PC, bookshelf
+      // Stairs down & landing mat at x: 6..9 are walkable to approach and trigger stairs freely
+      if (x >= 6 && x <= 9) return true;
+      return false; // Desk, PC, bookshelf (x: 1..5)
     }
 
     // Bed on the left
     if (x === 1 && y >= 4 && y <= 6) return false;
 
-    // Console TV on rug
-    if ((x === 4 || x === 5) && (y === 4 || y === 5)) return false;
+    // Console TV on rug (only row y === 4 blocks so row y === 5 is a clear corridor from the bed!)
+    if ((x === 4 || x === 5) && y === 4) return false;
 
     return true;
   }

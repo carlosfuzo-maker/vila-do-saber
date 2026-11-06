@@ -34,7 +34,7 @@ export const OAK_LAB_INTERACTABLES: OakLabInteractable[] = [
     y: 3,
     name: "Professor Carvalho 🔬",
     type: "oak",
-    dialogText: "Olá Bianca! O mundo dos Pokémon é vasto e repleto de ciências, matemática e descobertas! Continue estudando com dedicação para se tornar uma Mestra Pokémon completa!",
+    dialogText: "Olá jovem treinadora! O mundo dos Pokémon é vasto e repleto de ciências, matemática e descobertas! Continue estudando com dedicação para se tornar uma Mestra Pokémon completa!",
   },
 
   // 3 Starter Pokéballs on the right research table

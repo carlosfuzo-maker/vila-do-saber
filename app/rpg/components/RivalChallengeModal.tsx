@@ -178,7 +178,7 @@ export function RivalChallengeModal({
           setBattleOutcome("win");
           playSound("fanfare");
           confetti({ particleCount: 100, spread: 80, origin: { y: 0.6 } });
-          onBattleVictory(80, 120);
+          onBattleVictory(25, 120);
         }, 1500);
         return;
       }
@@ -516,7 +516,7 @@ export function RivalChallengeModal({
 
                   <div className="flex justify-center gap-4 py-2">
                     <span className="text-xs font-black text-amber-300 bg-amber-950/60 px-3 py-1.5 rounded-xl border border-amber-500/40">
-                      +80 Moedas 🪙
+                      +25 Moedas 🪙
                     </span>
                     <span className="text-xs font-black text-indigo-300 bg-indigo-950/60 px-3 py-1.5 rounded-xl border border-indigo-500/40">
                       +120 EXP de Sabedoria 🌟

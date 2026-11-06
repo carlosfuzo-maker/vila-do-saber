@@ -26,6 +26,7 @@ interface RpgBagModalProps {
   onPetPokemon: (pokemonId: string) => void;
   onOpenMarket: () => void;
   onOpenRocketRescue: () => void;
+  onUpdatePokemonList?: (newList: CapturedPokemon[]) => void;
   onTriggerEvolution?: (
     pokemon: CapturedPokemon,
     targetPokedexId: number,
@@ -45,12 +46,79 @@ export function RpgBagModal({
   onPetPokemon,
   onOpenMarket,
   onOpenRocketRescue,
+  onUpdatePokemonList,
   onTriggerEvolution,
 }: RpgBagModalProps) {
-  const [activeTab, setActiveTab] = useState<"pokemon" | "items" | "stolen">("pokemon");
+  const [activeTab, setActiveTab] = useState<"pokemon" | "box" | "items" | "stolen">("pokemon");
+  const [boxSearch, setBoxSearch] = useState<string>("");
   const [feedback, setFeedback] = useState<string | null>(null);
 
   if (!isOpen) return null;
+
+  // Split pokemonList into Active Party (up to 6 not in Box) and Poké-Box (Reserve)
+  const activeParty = pokemonList.filter((p) => !p.inBox).slice(0, 6);
+  const activePartyIds = new Set(activeParty.map((p) => p.id));
+  const boxPokemon = pokemonList.filter((p) => !activePartyIds.has(p.id));
+
+  const handleSetAsLeader = (pokemonId: string) => {
+    if (!onUpdatePokemonList) return;
+    const target = activeParty.find((p) => p.id === pokemonId);
+    if (!target) return;
+    const restParty = activeParty.filter((p) => p.id !== pokemonId);
+    const updatedParty = [{ ...target, inBox: false }, ...restParty.map((p) => ({ ...p, inBox: false }))];
+    const updatedBox = boxPokemon.map((p) => ({ ...p, inBox: true }));
+    onUpdatePokemonList([...updatedParty, ...updatedBox]);
+    playSound("star");
+    showToast(`👑 ${target.name} agora é o Líder (#1) da sua Equipe Ativa!`);
+  };
+
+  const handleMoveToBox = (pokemonId: string) => {
+    if (!onUpdatePokemonList) return;
+    if (activeParty.length <= 1) {
+      playSound("pop");
+      showToast("Você precisa manter pelo menos 1 Pokémon na sua Equipe Ativa!");
+      return;
+    }
+    const target = activeParty.find((p) => p.id === pokemonId);
+    if (!target) return;
+    const updatedParty = activeParty
+      .filter((p) => p.id !== pokemonId)
+      .map((p) => ({ ...p, inBox: false }));
+    const updatedBox = [{ ...target, inBox: true }, ...boxPokemon.map((p) => ({ ...p, inBox: true }))];
+    onUpdatePokemonList([...updatedParty, ...updatedBox]);
+    playSound("click");
+    showToast(`📦 ${target.name} foi guardado no Poké-Box Reserva!`);
+  };
+
+  const handleMoveToParty = (pokemonId: string) => {
+    if (!onUpdatePokemonList) return;
+    const target = boxPokemon.find((p) => p.id === pokemonId);
+    if (!target) return;
+
+    if (activeParty.length < 6) {
+      const updatedParty = [...activeParty.map((p) => ({ ...p, inBox: false })), { ...target, inBox: false }];
+      const updatedBox = boxPokemon
+        .filter((p) => p.id !== pokemonId)
+        .map((p) => ({ ...p, inBox: true }));
+      onUpdatePokemonList([...updatedParty, ...updatedBox]);
+      playSound("star");
+      showToast(`🐾 ${target.name} entrou na sua Equipe Ativa (${updatedParty.length}/6)!`);
+    } else {
+      // Swap with the 6th party member
+      const swappedOut = activeParty[5];
+      const updatedParty = [
+        ...activeParty.slice(0, 5).map((p) => ({ ...p, inBox: false })),
+        { ...target, inBox: false },
+      ];
+      const updatedBox = [
+        { ...swappedOut, inBox: true },
+        ...boxPokemon.filter((p) => p.id !== pokemonId).map((p) => ({ ...p, inBox: true })),
+      ];
+      onUpdatePokemonList([...updatedParty, ...updatedBox]);
+      playSound("star");
+      showToast(`🔄 ${target.name} entrou na Equipe Ativa no lugar de ${swappedOut.name}!`);
+    }
+  };
 
   const showToast = (text: string) => {
     setFeedback(text);
@@ -80,10 +148,13 @@ export function RpgBagModal({
               🎒
             </div>
             <div>
-              <h3 className="text-sm sm:text-base font-black tracking-wide flex items-center gap-2">
+              <h3 className="text-sm sm:text-base font-black tracking-wide flex items-center gap-2 flex-wrap">
                 <span>Bolsa & Equipe Pokémon</span>
+                <span className="text-[10px] bg-emerald-500/30 text-emerald-200 px-2 py-0.5 rounded-full border border-emerald-400/40">
+                  Equipe Ativa: {activeParty.length}/6
+                </span>
                 <span className="text-[10px] bg-indigo-500/30 text-indigo-200 px-2 py-0.5 rounded-full border border-indigo-400/40">
-                  {pokemonList.length} Pokémon
+                  Poké-Box: {boxPokemon.length}
                 </span>
               </h3>
               <p className="text-[11px] text-indigo-200">
@@ -102,21 +173,41 @@ export function RpgBagModal({
         </div>
 
         {/* Navigation Tabs */}
-        <div className="px-4 pt-2 pb-2 bg-slate-950 flex gap-2 border-b border-slate-800">
+        <div className="px-4 pt-2 pb-2 bg-slate-950 flex flex-wrap gap-1.5 border-b border-slate-800">
           <button
             type="button"
             onClick={() => {
               playSound("click");
               setActiveTab("pokemon");
             }}
-            className={`flex-1 py-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer ${
+            className={`flex-1 py-2 px-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1 cursor-pointer ${
               activeTab === "pokemon"
                 ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
                 : "bg-slate-900 text-slate-400 hover:text-slate-200"
             }`}
           >
-            <span>🐾 Meus Pokémon</span>
-            <span className="text-[10px] opacity-80">({pokemonList.length})</span>
+            <span>🐾 Equipe Ativa</span>
+            <span className="text-[10px] bg-black/30 px-1.5 py-0.2 rounded-full">
+              {activeParty.length}/6
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              playSound("click");
+              setActiveTab("box");
+            }}
+            className={`flex-1 py-2 px-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1 cursor-pointer ${
+              activeTab === "box"
+                ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/30"
+                : "bg-slate-900 text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            <span>📦 Poké-Box</span>
+            <span className="text-[10px] bg-black/30 px-1.5 py-0.2 rounded-full">
+              {boxPokemon.length}
+            </span>
           </button>
 
           <button
@@ -125,13 +216,13 @@ export function RpgBagModal({
               playSound("click");
               setActiveTab("items");
             }}
-            className={`flex-1 py-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer ${
+            className={`flex-1 py-2 px-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1 cursor-pointer ${
               activeTab === "items"
                 ? "bg-amber-600 text-white shadow-md shadow-amber-600/30"
                 : "bg-slate-900 text-slate-400 hover:text-slate-200"
             }`}
           >
-            <span>🎒 Suprimentos & Pedras</span>
+            <span>🎒 Itens & Pedras</span>
             <span className="text-[10px] opacity-80">({totalSupplies})</span>
           </button>
 
@@ -187,8 +278,15 @@ export function RpgBagModal({
                   </button>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {pokemonList.map((p) => {
+                <div className="space-y-3">
+                  <div className="p-2.5 rounded-xl bg-indigo-950/60 border border-indigo-500/30 text-[11px] text-indigo-200 font-semibold flex items-center justify-between flex-wrap gap-2">
+                    <span>
+                      💡 Você pode carregar até <b>6 Pokémon na Equipe Ativa</b>. Somente eles ganham EXP nos Simulados e evoluem! Os demais ficam guardados no <b>📦 Poké-Box</b>.
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {activeParty.map((p, idx) => {
+                    const isLeader = idx === 0;
                     const isTired = p.status === "tired";
                     const isPoisoned = p.status === "poisoned";
                     const kantoDef = getPokemonById(p.pokedexId);
@@ -233,7 +331,12 @@ export function RpgBagModal({
                               )}
                             </div>
                             <div>
-                              <div className="flex items-center gap-1.5">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                {isLeader && (
+                                  <span className="text-[9px] font-black bg-amber-400 text-slate-950 px-1.5 py-0.2 rounded-md shadow-xs">
+                                    👑 #1 LÍDER
+                                  </span>
+                                )}
                                 <h4 className="text-sm font-black text-white">{p.name}</h4>
                                 <span
                                   className="text-[9px] font-black text-white px-1.5 py-0.2 rounded-md"
@@ -376,9 +479,118 @@ export function RpgBagModal({
                             <span>Carinho</span>
                           </button>
                         </div>
+
+                        {/* Party Position & Poké-Box Controls */}
+                        {onUpdatePokemonList && (
+                          <div className="flex items-center gap-1.5 pt-1 border-t border-white/10">
+                            {!isLeader && (
+                              <button
+                                type="button"
+                                onClick={() => handleSetAsLeader(p.id)}
+                                className="flex-1 py-1 px-2 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/40 text-amber-300 rounded-lg text-[10px] font-black cursor-pointer transition"
+                              >
+                                👑 Tornar Líder (#1)
+                              </button>
+                            )}
+                            {activeParty.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => handleMoveToBox(p.id)}
+                                className="flex-1 py-1 px-2 bg-slate-900 hover:bg-slate-700 border border-slate-600 text-slate-300 rounded-lg text-[10px] font-bold cursor-pointer transition"
+                              >
+                                📦 Guardar no Box
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 1B: POKÉ-BOX (PC RESERVA PARA OS DEMAIS POKÉMON) */}
+          {activeTab === "box" && (
+            <div className="space-y-3">
+              <div className="p-3 rounded-2xl bg-emerald-950/50 border border-emerald-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <h4 className="text-xs font-black text-emerald-300">
+                    📦 Poké-Box do Professor Carvalho ({boxPokemon.length} guardados)
+                  </h4>
+                  <p className="text-[11px] text-slate-300">
+                    Aqui ficam guardados todos os seus Pokémon além dos 6 titulares da Equipe Ativa. Troque-os quando quiser!
+                  </p>
+                </div>
+                <input
+                  type="text"
+                  value={boxSearch}
+                  onChange={(e) => setBoxSearch(e.target.value)}
+                  placeholder="Buscar no Box..."
+                  className="bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-emerald-400"
+                />
+              </div>
+
+              {boxPokemon.length === 0 ? (
+                <div className="p-8 text-center bg-slate-950/60 rounded-2xl border border-slate-800 space-y-2">
+                  <div className="text-3xl">📦</div>
+                  <h4 className="text-sm font-black text-slate-300">
+                    Seu Poké-Box Reserva está vazio!
+                  </h4>
+                  <p className="text-xs text-slate-400 max-w-md mx-auto">
+                    Quando sua Equipe Ativa atingir 6 Pokémon, qualquer novo Pokémon capturado irá automaticamente para cá (ou você pode clicar em &ldquo;Guardar no Box&rdquo; na aba Equipe Ativa).
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {boxPokemon
+                    .filter(
+                      (p) =>
+                        p.name.toLowerCase().includes(boxSearch.toLowerCase()) ||
+                        p.type.toLowerCase().includes(boxSearch.toLowerCase())
+                    )
+                    .map((p) => (
+                      <div
+                        key={p.id}
+                        className="p-3 rounded-2xl bg-slate-800/80 border border-slate-700 flex items-center justify-between gap-2"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-12 h-12 rounded-xl bg-slate-950 border border-slate-700 flex items-center justify-center p-1 shrink-0">
+                            <img
+                              src={p.artworkUrl || p.spriteUrl}
+                              alt={p.name}
+                              className="w-full h-full object-contain"
+                            />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <h5 className="text-xs font-black text-white truncate">{p.name}</h5>
+                              <span
+                                className="text-[9px] font-black text-white px-1.5 py-0.2 rounded"
+                                style={{ backgroundColor: p.typeColor }}
+                              >
+                                {p.type}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-slate-400 font-bold">
+                              Nv. {p.level || 5} • Amizade {p.friendship || 50}%
+                            </p>
+                          </div>
+                        </div>
+
+                        {onUpdatePokemonList && (
+                          <button
+                            type="button"
+                            onClick={() => handleMoveToParty(p.id)}
+                            className="px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-black shrink-0 cursor-pointer shadow-sm"
+                          >
+                            {activeParty.length < 6 ? "➕ P/ Equipe" : "🔄 Trocar c/ #6"}
+                          </button>
+                        )}
+                      </div>
+                    ))}
                 </div>
               )}
             </div>

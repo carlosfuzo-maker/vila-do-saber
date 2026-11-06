@@ -6,6 +6,8 @@ import {
   getPokemonArtworkUrl,
   getPokemonSpriteUrl,
   getPokemonAnimatedUrl,
+  getPokemonSpawnCategory,
+  getSpawnRateMeta,
 } from "../data/kantoPokedex";
 import {
   ALL_REGIONAL_POKEMON,
@@ -74,12 +76,23 @@ export const KantoPokedexModal: React.FC<KantoPokedexModalProps> = ({
     if (selectedFilter === "fire") return p.type === "Fogo";
     if (selectedFilter === "grass") return p.type === "Planta";
     if (selectedFilter === "electric") return p.type === "Elétrico";
-    if (selectedFilter === "rare") return p.habitat === "rare";
+    if (
+      selectedFilter === "common" ||
+      selectedFilter === "uncommon" ||
+      selectedFilter === "hard" ||
+      selectedFilter === "rare" ||
+      selectedFilter === "epic" ||
+      selectedFilter === "legendary"
+    ) {
+      return getPokemonSpawnCategory(p) === selectedFilter;
+    }
 
     return true;
   });
 
   const isSelectedCaptured = capturedIds.has(selectedPokemon.pokedexId);
+  const selectedCategory = getPokemonSpawnCategory(selectedPokemon);
+  const selectedSpawnMeta = getSpawnRateMeta(selectedCategory);
 
   // Determine current region title
   const getHeaderRegionTitle = () => {
@@ -303,15 +316,64 @@ export const KantoPokedexModal: React.FC<KantoPokedexModalProps> = ({
               <span>Planta</span>
             </button>
             <button
-              onClick={() => setSelectedFilter("electric")}
-              className={`px-2.5 py-1 rounded-lg transition cursor-pointer flex items-center gap-1 ${
-                selectedFilter === "electric"
-                  ? "bg-yellow-400 text-slate-950"
-                  : "bg-slate-900/60 text-yellow-200 hover:bg-slate-800"
+              onClick={() => setSelectedFilter("common")}
+              className={`px-2 py-1 rounded-lg transition cursor-pointer ${
+                selectedFilter === "common"
+                  ? "bg-slate-500 text-white"
+                  : "bg-slate-900/60 text-slate-300 hover:bg-slate-800"
               }`}
             >
-              <Zap className="w-3 h-3" />
-              <span>Elétrico</span>
+              Comum (55%)
+            </button>
+            <button
+              onClick={() => setSelectedFilter("uncommon")}
+              className={`px-2 py-1 rounded-lg transition cursor-pointer ${
+                selectedFilter === "uncommon"
+                  ? "bg-emerald-600 text-white"
+                  : "bg-slate-900/60 text-emerald-300 hover:bg-slate-800"
+              }`}
+            >
+              Incomum (20%)
+            </button>
+            <button
+              onClick={() => setSelectedFilter("hard")}
+              className={`px-2 py-1 rounded-lg transition cursor-pointer ${
+                selectedFilter === "hard"
+                  ? "bg-sky-600 text-white"
+                  : "bg-slate-900/60 text-sky-300 hover:bg-slate-800"
+              }`}
+            >
+              Difícil (8%)
+            </button>
+            <button
+              onClick={() => setSelectedFilter("rare")}
+              className={`px-2 py-1 rounded-lg transition cursor-pointer ${
+                selectedFilter === "rare"
+                  ? "bg-purple-600 text-white"
+                  : "bg-slate-900/60 text-purple-300 hover:bg-slate-800"
+              }`}
+            >
+              Raro (5%)
+            </button>
+            <button
+              onClick={() => setSelectedFilter("epic")}
+              className={`px-2 py-1 rounded-lg transition cursor-pointer ${
+                selectedFilter === "epic"
+                  ? "bg-amber-600 text-white"
+                  : "bg-slate-900/60 text-amber-300 hover:bg-slate-800"
+              }`}
+            >
+              Épico/Fóssil (1,5%)
+            </button>
+            <button
+              onClick={() => setSelectedFilter("legendary")}
+              className={`px-2 py-1 rounded-lg transition cursor-pointer ${
+                selectedFilter === "legendary"
+                  ? "bg-rose-600 text-white"
+                  : "bg-slate-900/60 text-rose-300 hover:bg-slate-800"
+              }`}
+            >
+              Lendário (0,5%)
             </button>
           </div>
         </div>
@@ -376,8 +438,8 @@ export const KantoPokedexModal: React.FC<KantoPokedexModalProps> = ({
                 )}
               </div>
 
-              {/* Type Badges */}
-              <div className="flex items-center gap-2 mb-2">
+              {/* Type & Rarity Badges */}
+              <div className="flex flex-wrap items-center gap-1.5 mb-2">
                 <span
                   className="px-2.5 py-0.5 rounded-lg text-xs font-black text-white shadow-sm"
                   style={{ backgroundColor: selectedPokemon.typeColor }}
@@ -389,8 +451,15 @@ export const KantoPokedexModal: React.FC<KantoPokedexModalProps> = ({
                     {selectedPokemon.secondaryType}
                   </span>
                 )}
-                <span className="text-[11px] font-bold text-slate-400 ml-auto">
-                  Taxa: {Math.round(selectedPokemon.baseCatchRate * 100)}%
+                <span
+                  className="px-2 py-0.5 rounded-lg text-[10px] font-black text-white shadow-sm"
+                  style={{ backgroundColor: selectedSpawnMeta.badgeColor }}
+                >
+                  {selectedSpawnMeta.label} • Spawn {selectedSpawnMeta.percentageDisplay}
+                </span>
+                <span className="text-[10px] font-black text-emerald-300 ml-auto">
+                  Captura: {Math.round(selectedSpawnMeta.defaultCatchRate * 100)}% (🍒{" "}
+                  {Math.round(selectedSpawnMeta.berryCatchRate * 100)}%)
                 </span>
               </div>
 

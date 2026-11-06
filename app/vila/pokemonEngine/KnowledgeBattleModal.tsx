@@ -96,7 +96,7 @@ export function KnowledgeBattleModal({
 
   const handleFinishVictory = () => {
     playSound("fanfare");
-    onVictory(50, 40);
+    onVictory(12, 40);
     onClose();
   };
 
@@ -265,7 +265,7 @@ export function KnowledgeBattleModal({
             <div className="flex items-center justify-between p-2 bg-emerald-950/80 rounded-2xl border-2 border-emerald-400">
               <div className="flex items-center gap-2 text-xs font-black text-emerald-300">
                 <Trophy className="w-5 h-5 text-yellow-400" />
-                <span>Vitória! A Rota está livre! (+50 Moedas 🪙 / +40 XP ⭐)</span>
+                <span>Vitória! A Rota está livre! (+12 Moedas 🪙 / +40 XP ⭐)</span>
               </div>
 
               <button

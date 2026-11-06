@@ -218,9 +218,9 @@ export const BuildingInteriorModal: React.FC<BuildingInteriorModalProps> = ({
       // Completed a 3-question set
       setHomeworkCompleted(true);
       playSound("fanfare");
-      onAddCoins(60);
+      onAddCoins(15);
       onAddXp(120);
-      setNoticeMessage("🎉 Parabéns! Dever de casa finalizado com sucesso! Você ganhou +60 Moedas 🪙 e +120 EXP!");
+      setNoticeMessage("🎉 Parabéns! Dever de casa finalizado com sucesso! Você ganhou +15 Moedas 🪙 e +120 EXP!");
     } else {
       setHomeworkIndex((i) => i + 1);
       setSelectedAnswer(null);
@@ -233,7 +233,7 @@ export const BuildingInteriorModal: React.FC<BuildingInteriorModalProps> = ({
     setClaimedSnack(true);
     playSound("star");
     if (onAddPotion) onAddPotion();
-    onAddCoins(25);
+    onAddCoins(5);
     setNoticeMessage("🥪 Mamãe Renata te deu um sanduíche quentinho, suco natural e +1 Poção de presente!");
     confetti({ particleCount: 25, spread: 50, origin: { y: 0.5 } });
   };
@@ -676,7 +676,7 @@ export const BuildingInteriorModal: React.FC<BuildingInteriorModalProps> = ({
                       </h4>
                       <p className="text-xs sm:text-sm text-stone-300 max-w-md mx-auto">
                         Papai Carlos e Mamãe Renata conferiram suas respostas e deixaram sua mesada de{" "}
-                        <strong className="text-amber-300">+60 Moedas 🪙</strong> e{" "}
+                        <strong className="text-amber-300">+15 Moedas 🪙</strong> e{" "}
                         <strong className="text-cyan-300">+120 EXP</strong> na mesa!
                       </p>
                       <button
@@ -973,15 +973,15 @@ export const BuildingInteriorModal: React.FC<BuildingInteriorModalProps> = ({
                   </div>
                   <button
                     onClick={() => {
-                      onAddCoins(20);
+                      onAddCoins(5);
                       onAddXp(40);
                       playSound("success");
-                      setNoticeMessage("🧮 Você treinou tabuada no quadro e ganhou +20 Moedas!");
+                      setNoticeMessage("🧮 Você treinou tabuada no quadro e ganhou +5 Moedas!");
                     }}
                     className="mt-4 w-full py-2.5 bg-stone-800 hover:bg-stone-700 text-yellow-300 text-xs font-bold rounded-lg border border-yellow-500/40 shadow transition-all active:scale-95 flex items-center justify-center gap-2"
                   >
                     <Sparkles className="w-4 h-4" />
-                    <span>Resolver Cálculo Rápido (+20 🪙)</span>
+                    <span>Resolver Cálculo Rápido (+5 🪙)</span>
                   </button>
                 </div>
               </div>
@@ -1102,15 +1102,15 @@ export const BuildingInteriorModal: React.FC<BuildingInteriorModalProps> = ({
                   </div>
                   <button
                     onClick={() => {
-                      onAddCoins(25);
+                      onAddCoins(5);
                       onAddXp(50);
                       playSound("success");
-                      setNoticeMessage("🤖 Robo-Buddy: 'Awesome! You learned 5 new English words!' (+25 🪙)");
+                      setNoticeMessage("🤖 Robo-Buddy: 'Awesome! You learned 5 new English words!' (+5 🪙)");
                     }}
                     className="mt-4 w-full py-2.5 bg-stone-800 hover:bg-stone-700 text-cyan-300 text-xs font-bold rounded-lg border border-indigo-500/40 shadow transition-all active:scale-95 flex items-center justify-center gap-2"
                   >
                     <Sparkles className="w-4 h-4" />
-                    <span>Praticar Inglês (+25 🪙)</span>
+                    <span>Praticar Inglês (+5 🪙)</span>
                   </button>
                 </div>
               </div>

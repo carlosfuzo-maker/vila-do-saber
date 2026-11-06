@@ -25,9 +25,11 @@ import {
   getSupabaseCredentials,
   loadProfileSave,
   getDefaultProfileSave,
+  resetAllProfilesToZero,
 } from "@/lib/supabaseClient";
 import { playSound } from "@/lib/soundEffects";
 import { RpgCloudSettingsModal } from "./RpgCloudSettingsModal";
+import { PwaInstallButton } from "@/app/components/PwaManager";
 
 interface RpgLoginScreenProps {
   onLoginSuccess: (saveData: RpgSaveData, fromCloud: boolean) => void;
@@ -49,6 +51,9 @@ export function RpgLoginScreen({ onLoginSuccess }: RpgLoginScreenProps) {
   // Cloud status
   const [isCloudConfigured, setIsCloudConfigured] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState<boolean>(false);
+  const [isResettingAll, setIsResettingAll] = useState<boolean>(false);
+  const [resetSuccessBanner, setResetSuccessBanner] = useState<string | null>(null);
 
   // Load preview saves for both profiles on mount
   const refreshProfiles = useCallback(async () => {
@@ -154,28 +159,40 @@ export function RpgLoginScreen({ onLoginSuccess }: RpgLoginScreenProps) {
   const activeProfileData = selectedProfileId === "cecilia" ? ceciliaSave : biancaSave;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950 overflow-y-auto select-none">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950 overflow-y-auto select-none">
       {/* Dynamic Background Pattern */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-red-900/40 via-slate-950 to-slate-950 -z-10" />
       <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#ef4444_1px,transparent_1px)] [background-size:24px_24px] pointer-events-none" />
 
-      <div className="relative w-full max-w-4xl mx-auto flex flex-col items-center">
-        {/* Game Title & Branding Header */}
-        <div className="text-center mb-6 sm:mb-8 space-y-2">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-red-600/20 border border-red-500/40 text-red-300 text-xs sm:text-sm font-bold tracking-widest uppercase shadow-inner">
-            <Sparkles className="w-4 h-4 text-amber-400" />
+      <div className="relative w-full max-w-4xl mx-auto flex flex-col items-center my-auto py-1">
+        {/* Game Title & Branding Header (Compact for Landscape Tablets) */}
+        <div className="text-center mb-3 sm:mb-5 space-y-1">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-600/20 border border-red-500/40 text-red-300 text-[11px] sm:text-xs font-bold tracking-widest uppercase shadow-inner">
+            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
             Vila do Saber • FireRed Edition
           </div>
-          <h1 className="text-3xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-red-500 via-amber-400 to-red-400 tracking-tight drop-shadow-md">
+          <h1 className="text-2xl sm:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-red-500 via-amber-400 to-red-400 tracking-tight drop-shadow-md">
             Mundo RPG Escolar
           </h1>
-          <p className="text-xs sm:text-base text-slate-300 max-w-lg mx-auto font-medium">
-            Selecione o seu perfil de Treinadora para entrar na sua jornada com seu save seguro e sincronizado na nuvem!
+          <p className="text-xs sm:text-sm text-slate-300 max-w-lg mx-auto font-medium">
+            Toque na sua Treinadora para começar sua jornada no tablet!
           </p>
         </div>
 
-        {/* Profile Selection Grid */}
-        <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 max-w-3xl mb-6">
+        {resetSuccessBanner && (
+          <div className="w-full max-w-3xl mb-3 px-4 py-2.5 rounded-2xl bg-emerald-950/90 border-2 border-emerald-400 text-emerald-200 text-xs font-black flex items-center justify-between shadow-lg">
+            <span>{resetSuccessBanner}</span>
+            <button
+              onClick={() => setResetSuccessBanner(null)}
+              className="px-2 py-0.5 rounded bg-emerald-800 text-white text-[11px]"
+            >
+              OK
+            </button>
+          </div>
+        )}
+
+        {/* Profile Selection Grid (2 columns in Landscape Tablet & Desktop) */}
+        <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-5 max-w-3xl mb-4">
           {/* CECÍLIA PROFILE CARD */}
           <div
             onClick={() => {
@@ -488,8 +505,8 @@ export function RpgLoginScreen({ onLoginSuccess }: RpgLoginScreenProps) {
           </div>
         )}
 
-        {/* Bottom Cloud Status Bar */}
-        <div className="w-full max-w-3xl flex flex-wrap items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-slate-900/60 border border-slate-800 text-xs">
+        {/* Bottom Cloud Status Bar + PWA Install + Reset Zero Button */}
+        <div className="w-full max-w-3xl flex flex-wrap items-center justify-between gap-2.5 px-4 py-2.5 rounded-2xl bg-slate-900/70 border border-slate-800 text-xs">
           <div className="flex items-center gap-2">
             <span
               className={`w-2.5 h-2.5 rounded-full ${
@@ -499,7 +516,7 @@ export function RpgLoginScreen({ onLoginSuccess }: RpgLoginScreenProps) {
             <span className="text-slate-300 font-medium">
               {isCloudConfigured ? (
                 <span className="text-emerald-300 font-semibold flex items-center gap-1.5">
-                  <Cloud className="w-3.5 h-3.5" /> Nuvem Supabase Ativa (Salvamento Online)
+                  <Cloud className="w-3.5 h-3.5" /> Nuvem Supabase Ativa
                 </span>
               ) : (
                 <span className="text-amber-300 font-semibold flex items-center gap-1.5">
@@ -509,20 +526,84 @@ export function RpgLoginScreen({ onLoginSuccess }: RpgLoginScreenProps) {
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <PwaInstallButton />
+
+            <button
+              type="button"
+              onClick={() => {
+                playSound("click");
+                setIsResetConfirmOpen(true);
+              }}
+              className="px-3 py-1.5 rounded-xl bg-rose-950/90 hover:bg-rose-900 border border-rose-500/50 text-rose-200 hover:text-white font-bold flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+              title="Reiniciar o progresso de Cecília e Bianca do zero"
+            >
+              <RefreshCw className="w-3.5 h-3.5 text-rose-400" />
+              <span>Resetar Jogo do Zero</span>
+            </button>
+
             <button
               onClick={() => {
                 playSound("click");
                 setIsSettingsOpen(true);
               }}
-              className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-semibold flex items-center gap-1.5 transition-all"
+              className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
             >
               <Settings className="w-3.5 h-3.5" />
-              Configurar Nuvem / Supabase
+              <span>Nuvem / Supabase</span>
             </button>
           </div>
         </div>
       </div>
+
+      {/* Confirmation Modal to Reset Both Sisters to Zero */}
+      {isResetConfirmOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="w-full max-w-md bg-slate-900 border-2 border-rose-500 rounded-3xl p-6 shadow-2xl text-center space-y-4">
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-rose-500/20 border border-rose-400/50 flex items-center justify-center text-3xl">
+              🔄
+            </div>
+            <h3 className="text-xl font-black text-white">
+              Resetar Jogo do Zero (Bianca &amp; Cecília)?
+            </h3>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Isso reiniciará o progresso das duas irmãs (<strong>Cecília</strong> e{" "}
+              <strong>Bianca</strong>) tanto neste tablet quanto na nuvem Supabase. Ambas começarão do zero no{" "}
+              <strong>2º Andar da Casa da Família</strong> para escolher o 1º Pokémon Inicial e fazer a{" "}
+              <strong>1ª Missão Obrigatória</strong>!
+            </p>
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsResetConfirmOpen(false)}
+                className="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={isResettingAll}
+                onClick={async () => {
+                  setIsResettingAll(true);
+                  playSound("fanfare");
+                  const res = await resetAllProfilesToZero();
+                  await refreshProfiles();
+                  setIsResettingAll(false);
+                  setIsResetConfirmOpen(false);
+                  setResetSuccessBanner(
+                    res.cloudReset
+                      ? "✅ Jogo resetado do zero para Cecília e Bianca (Tablet + Nuvem Supabase)!"
+                      : "✅ Jogo resetado do zero para Cecília e Bianca neste tablet!"
+                  );
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-black text-xs shadow-lg cursor-pointer"
+              >
+                {isResettingAll ? "Resetando..." : "Sim, Resetar Tudo do Zero!"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Cloud & PIN Settings Modal */}
       <RpgCloudSettingsModal

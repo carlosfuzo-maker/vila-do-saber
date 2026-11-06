@@ -279,7 +279,7 @@ export const GymChallengeModal: React.FC<GymChallengeModalProps> = ({
           confetti({ particleCount: 70, spread: 80, origin: { y: 0.6 } });
           playSound("fanfare");
         } catch {}
-        onAwardBadgeAndSkill(gym.badgeId, gym.skillId, 100, 200);
+        onAwardBadgeAndSkill(gym.badgeId, gym.skillId, 35, 200);
       }
     } else {
       try {
@@ -375,7 +375,7 @@ export const GymChallengeModal: React.FC<GymChallengeModalProps> = ({
             {/* Rewards */}
             <div className="flex items-center gap-3">
               <div className="bg-amber-500/20 border border-amber-400/50 px-4 py-2 rounded-xl font-black text-amber-300 text-xs">
-                🪙 +100 Moedas
+                🪙 +35 Moedas
               </div>
               <div className="bg-purple-500/20 border border-purple-400/50 px-4 py-2 rounded-xl font-black text-purple-300 text-xs">
                 ⭐ +200 XP

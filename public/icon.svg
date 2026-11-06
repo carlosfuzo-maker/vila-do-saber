@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e1b4b"/>
+      <stop offset="50%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#020617"/>
+    </linearGradient>
+    <linearGradient id="topHalf" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ef4444"/>
+      <stop offset="100%" stop-color="#b91c1c"/>
+    </linearGradient>
+    <linearGradient id="bottomHalf" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#f8fafc"/>
+      <stop offset="100%" stop-color="#cbd5e1"/>
+    </linearGradient>
+    <linearGradient id="goldRing" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fde047"/>
+      <stop offset="100%" stop-color="#d97706"/>
+    </linearGradient>
+  </defs>
+  <!-- Rounded App Icon Background -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)"/>
+  <rect x="16" y="16" width="480" height="480" rx="98" fill="none" stroke="url(#goldRing)" stroke-width="10" opacity="0.85"/>
+  <!-- Outer Glow -->
+  <circle cx="256" cy="256" r="188" fill="#ef4444" opacity="0.18"/>
+  <!-- Pokéball Base -->
+  <circle cx="256" cy="256" r="168" fill="url(#bottomHalf)" stroke="#0f172a" stroke-width="18"/>
+  <!-- Pokéball Red Top -->
+  <path d="M 88 256 A 168 168 0 0 1 424 256 Z" fill="url(#topHalf)" stroke="#0f172a" stroke-width="18"/>
+  <!-- Highlight Shine -->
+  <ellipse cx="195" cy="155" rx="46" ry="24" transform="rotate(-25 195 155)" fill="#ffffff" opacity="0.38"/>
+  <!-- Center Band -->
+  <rect x="88" y="238" width="336" height="36" fill="#0f172a"/>
+  <!-- Center Button Outer -->
+  <circle cx="256" cy="256" r="56" fill="#0f172a"/>
+  <circle cx="256" cy="256" r="42" fill="url(#goldRing)"/>
+  <circle cx="256" cy="256" r="24" fill="#ffffff"/>
+  <!-- Golden Academic Star Top Right -->
+  <polygon points="400,70 412,98 442,101 419,121 426,150 400,134 374,150 381,121 358,101 388,98" fill="url(#goldRing)" stroke="#0f172a" stroke-width="5"/>
+</svg>
+

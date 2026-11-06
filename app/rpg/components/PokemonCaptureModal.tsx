@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { WildPokemonDef, CapturedPokemon, RpgInventory } from "../rpgTypes";
+import { getPokemonSpawnCategory, getSpawnRateMeta } from "../data/kantoPokedex";
 import { playSound } from "@/lib/soundEffects";
 import confetti from "canvas-confetti";
 import {
@@ -70,6 +71,8 @@ export function PokemonCaptureModal({
   });
   const [berryBonus, setBerryBonus] = useState<boolean>(false);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const spawnCategory = wildPokemon.rarityCategory || getPokemonSpawnCategory({ pokedexId: wildPokemon.pokedexId, baseCatchRate: wildPokemon.baseCatchRate });
+  const spawnMeta = getSpawnRateMeta(spawnCategory);
 
   if (!isOpen) return null;
 
@@ -98,9 +101,11 @@ export function PokemonCaptureModal({
           setWobbleCount(3);
           playSound("click");
 
-          // Determine catch success (bonus if fed berry or base catch rate is high)
+          // Determine catch success calibrated by the 6 official rarity categories
           const roll = Math.random();
-          const catchChance = berryBonus ? 1.0 : Math.max(0.75, wildPokemon.baseCatchRate);
+          const catchChance = berryBonus
+            ? spawnMeta.berryCatchRate
+            : spawnMeta.defaultCatchRate;
 
           if (roll <= catchChance) {
             // SUCCESS!
@@ -159,8 +164,12 @@ export function PokemonCaptureModal({
     onConsumeItem("berries");
     playSound("star");
     setBerryBonus(true);
-    setDialogue(`Você ofereceu uma Fruta Baga doce! O ${wildPokemon.name} adorou e agora confia em você! 💕`);
-    setFeedback("Taxa de captura aumentada para 100%!");
+    setDialogue(`Você ofereceu uma Fruta Baga doce! O ${wildPokemon.name} adorou e agora confia mais em você! 💕`);
+    setFeedback(
+      `Chance de captura subiu de ${Math.round(spawnMeta.defaultCatchRate * 100)}% para ${Math.round(
+        spawnMeta.berryCatchRate * 100
+      )}%!`
+    );
   };
 
   return (
@@ -245,13 +254,27 @@ export function PokemonCaptureModal({
           {/* Top Status Card - Strictly on layer z-30 */}
           <div className="relative z-30 bg-white/95 backdrop-blur-md rounded-2xl px-4 py-2 shadow-lg border-2 border-slate-700 flex items-center gap-3">
             <div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="text-sm font-black text-slate-900">{wildPokemon.name}</span>
                 <span
                   className="text-[10px] font-black text-white px-2 py-0.2 rounded-full shadow-xs"
                   style={{ backgroundColor: wildPokemon.typeColor }}
                 >
                   {wildPokemon.type}
+                </span>
+                <span
+                  className="text-[10px] font-black text-white px-2 py-0.2 rounded-full shadow-xs"
+                  style={{ backgroundColor: spawnMeta.badgeColor }}
+                  title={spawnMeta.description}
+                >
+                  {spawnMeta.label} • Spawn {spawnMeta.percentageDisplay}
+                </span>
+                <span className="text-[10px] font-black text-emerald-700 bg-emerald-100 border border-emerald-300 px-2 py-0.2 rounded-full">
+                  🔴 Captura:{" "}
+                  {Math.round(
+                    (berryBonus ? spawnMeta.berryCatchRate : spawnMeta.defaultCatchRate) * 100
+                  )}
+                  %
                 </span>
               </div>
               <p className="text-[10px] text-slate-500 font-bold">{wildPokemon.habitat}</p>

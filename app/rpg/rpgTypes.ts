@@ -20,6 +20,7 @@ export interface CapturedPokemon {
   status: PokemonStatus;
   caughtAt: string;
   friendship: number; // 0 - 100
+  inBox?: boolean;    // true = stored in Poké-Box (PC Reserva); false/undefined = in Active Party (max 6)
   notes?: string;
 }
 
@@ -35,6 +36,14 @@ export interface RpgInventory {
   moonStones: number;
 }
 
+export type SpawnCategory =
+  | "common"    // 55% - Comuns
+  | "uncommon"  // 20% - Incomuns
+  | "hard"      // 8%  - Difíceis
+  | "rare"      // 5%  - Raros (ex: Dratini)
+  | "epic"      // 1,5% - Épicos / Fósseis (obtidos via laboratório/eventos)
+  | "legendary";// 0,5% - Lendários (exclusivos de desafios finais e provas de maestria)
+
 export interface WildPokemonDef {
   pokedexId: number;
   species: string;
@@ -48,6 +57,8 @@ export interface WildPokemonDef {
   artworkUrl: string;
   spriteUrl: string;
   animatedUrl?: string;
+  rarityCategory?: SpawnCategory;
+  spawnRateLabel?: string;
 }
 
 export interface ExplorerSkills {
@@ -106,9 +117,14 @@ export interface SisterSyncState {
   sisterName: "Bianca" | "Cecília";
   x: number;
   y: number;
+  drawX?: number;
+  drawY?: number;
   facing: "up" | "down" | "left" | "right";
   isMoving: boolean;
   isSurfing: boolean;
+  interiorId?: string | null;
+  interiorFloor?: number | null;
+  currentZone?: string;
   customization?: PlayerCustomization;
   activePokemonName?: string;
   lastSeen: number;
@@ -140,6 +156,9 @@ export interface RpgSaveData {
   phoneMessages: any[]; // PhoneMessage[]
   rivalConfig?: RivalConfig | null;
   answeredQuestionIds?: string[]; // IDs of correctly answered questions (Anti-Repetition Engine)
+  completedSchoolChapters?: string[]; // IDs of school chapter presentations completed (e.g. "math_ch1", "portuguese_ch1")
+  wildHuntQuota?: number; // Available tall-grass hunts earned via school lessons & homework
+  tutorialStep?: number; // 1..5 = active mandatory tutorial steps, 6 = completed
   updatedAt: string;
 }
 

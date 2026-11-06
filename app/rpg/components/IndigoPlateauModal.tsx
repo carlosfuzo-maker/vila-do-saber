@@ -352,7 +352,7 @@ export const IndigoPlateauModal: React.FC<IndigoPlateauModalProps> = ({
       // Base: 160 EXP * 2 = 320 EXP, Coins: 120
       const baseExp = 160;
       const doubledExp = baseExp * 2;
-      const coinsReward = 120;
+      const coinsReward = 45;
       onCompleteSimulado(coinsReward, doubledExp, true);
     }
   };
@@ -627,7 +627,7 @@ export const IndigoPlateauModal: React.FC<IndigoPlateauModalProps> = ({
                 <p className="text-xs text-white leading-relaxed">
                   Todos os <strong className="text-amber-300">{pokemonTeamCount} Pokémon</strong> da sua equipe receberam{" "}
                   <strong className="text-amber-300">+320 EXP</strong> (em dobro) e você faturou{" "}
-                  <strong className="text-amber-300">+120 Moedas 🪙</strong>!
+                  <strong className="text-amber-300">+45 Moedas 🪙</strong>!
                 </p>
               </div>
 

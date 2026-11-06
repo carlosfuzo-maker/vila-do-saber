@@ -34,7 +34,7 @@ export const RIVAL_HOUSE_INTERACTABLES: RivalHouseInteractable[] = [
     y: 4,
     name: "Daisy Carvalho ☕",
     type: "daisy",
-    dialogText: "Oi Bianca! Que bom te ver! Meu irmão saiu correndo dizendo que vai ser o maior campeão... Mas você sabe que a verdadeira força vem do estudo e da bondade com os Pokémon! Tome uma xícara de chá quentinho que preparei para você e sua equipe!",
+    dialogText: "Oi querida! Que bom te ver! Meu irmão saiu correndo dizendo que vai ser o maior campeão... Mas você sabe que a verdadeira força vem do estudo e da bondade com os Pokémon! Tome uma xícara de chá quentinho que preparei para você e sua equipe!",
   },
 
   // Dining table tea set

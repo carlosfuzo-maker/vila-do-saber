@@ -22,6 +22,7 @@ import { ExamAlertModal } from "../vila/components/ExamAlertModal";
 import { RpgLoginScreen } from "./components/RpgLoginScreen";
 import { RpgCloudSettingsModal } from "./components/RpgCloudSettingsModal";
 import { StarterSelectionModal, StarterChoiceOption } from "./components/StarterSelectionModal";
+import { CitySchoolModal } from "./components/CitySchoolModal";
 import {
   KANTO_POKEDEX_151,
   getWaterPokemonPool,
@@ -31,6 +32,9 @@ import {
   getPokemonAnimatedUrl,
   getWeightedEncounter,
   getPokemonById,
+  getPokemonSpawnCategory,
+  getSpawnRateMeta,
+  rollOfficialSpawnCategory,
 } from "./data/kantoPokedex";
 import {
   getRegionalWeightedEncounter,
@@ -152,12 +156,26 @@ import {
   drawIndigoPlateauInterior,
 } from "./data/indigoPlateauData";
 import {
+  SCHOOL_COLS,
+  SCHOOL_ROWS,
+  isSchoolTileWalkable,
+  getSchoolInteractable,
+  drawCitySchoolInterior,
+  getSchoolSubjectByBuildingId,
+  getSchoolLesson,
+  SchoolSubjectKey,
+  SchoolChapterLesson,
+} from "./data/citySchoolData";
+import {
   loadProfileSave,
   saveProfileSave,
   ACTIVE_PROFILE_KEY,
+  MASTER_RESET_KEY,
+  resetAllProfilesToZero,
   getSupabaseClient,
   getDefaultProfileSave,
 } from "@/lib/supabaseClient";
+import { PwaInstallButton } from "../components/PwaManager";
 import { STUDENT_PROFILES, INITIAL_EXAMS, SUBJECTS_YEAR_2, SUBJECTS_YEAR_4 } from "../vila/data";
 import { StudentProfile, PhoneMessage, ActiveStoryQuest, ExamAlert } from "../vila/types";
 import {
@@ -194,6 +212,12 @@ import {
   Settings,
   Database,
   RefreshCw,
+  Maximize,
+  Minimize,
+  Menu,
+  X,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 
 // Types
@@ -220,22 +244,22 @@ interface NpcDef {
   x: number;
   y: number;
   sprite:
-    | "carlos"
-    | "mamae"
-    | "cecilia"
-    | "bianca"
-    | "pitagoras"
-    | "flora"
-    | "palavra"
-    | "oliver"
-    | "rocket"
-    | "clerk"
-    | "rival"
-    | "rival_boy"
-    | "rival_girl"
-    | "picnic"
-    | "pipoca"
-    | "prof";
+  | "carlos"
+  | "mamae"
+  | "cecilia"
+  | "bianca"
+  | "pitagoras"
+  | "flora"
+  | "palavra"
+  | "oliver"
+  | "rocket"
+  | "clerk"
+  | "rival"
+  | "rival_boy"
+  | "rival_girl"
+  | "picnic"
+  | "pipoca"
+  | "prof";
   dialog: (year: StudentYear, sisterName: string) => string;
   quiz?: (year: StudentYear) => {
     id?: string;
@@ -325,96 +349,96 @@ const PARENT_DIRECTIVES_TEMPLATE: Array<{
   rewardXp: number;
   rewardPotions?: number;
 }> = [
-  // Missões Urgentes do Papai Carlos (Bloqueio restritivo ativo de rotas)
-  {
-    sender: "papai",
-    senderName: "Papai Carlos",
-    avatarEmoji: "👨‍👧",
-    title: "Missão Urgente do Pai: Investigar Ciências no Vale!",
-    text: (name) =>
-      `Filha ${name}, vá resolver a matéria de Ciências no Vale das Ciências! Não passe para outras cidades antes de concluir esse estudo!`,
-    targetSubjectId: "ciencias",
-    targetCityName: "Vale das Ciências",
-    rewardCoins: 50,
-    rewardXp: 40,
-  },
-  {
-    sender: "papai",
-    senderName: "Papai Carlos",
-    avatarEmoji: "👨‍👧",
-    title: "Missão Urgente do Pai: Multiplicação na Metrópole!",
-    text: (name) =>
-      `Filha ${name}, o Professor Pitágoras precisa da sua ajuda na Metrópole da Matemática com a tabuada! Vá direto para lá resolver o desafio!`,
-    targetSubjectId: "matematica",
-    targetCityName: "Metrópole da Matemática",
-    rewardCoins: 50,
-    rewardXp: 40,
-  },
-  {
-    sender: "papai",
-    senderName: "Papai Carlos",
-    avatarEmoji: "👨‍👧",
-    title: "Missão Urgente do Pai: Leitura na Cidadela!",
-    text: (name) =>
-      `Filha ${name}, a Dona Palavra tem um livro especial para você na Cidadela do Português! Vá lá agora mesmo e mostre sua dedicação!`,
-    targetSubjectId: "portugues",
-    targetCityName: "Cidadela do Português",
-    rewardCoins: 50,
-    rewardXp: 40,
-  },
-  {
-    sender: "papai",
-    senderName: "Papai Carlos",
-    avatarEmoji: "👨‍👧",
-    title: "Missão Urgente do Pai: Inglês no Distrito Tech!",
-    text: (name) =>
-      `Filha ${name}, hora da aula prática com o Teacher Oliver no Distrito de Inglês! Conclua o desafio de vocabulário antes de passear!`,
-    targetSubjectId: "ingles",
-    targetCityName: "Distrito de Inglês & Tech",
-    rewardCoins: 50,
-    rewardXp: 40,
-  },
-  // Missões Carinhosas da Mamãe Renata (Cuidado doméstico com pets e plantas -> Moedas + Poções!)
-  {
-    sender: "mamae",
-    senderName: "Mamãe Renata",
-    avatarEmoji: "👩‍👧",
-    title: "Pedido da Mamãe: Regar as Plantinhas do Jardim!",
-    text: (name) =>
-      `Filha ${name}, regue com amor o canteiro de flores da nossa casa! Ganhe moedas e poções curativas para seus Pokémon!`,
-    targetSubjectId: "flores",
-    targetCityName: "Jardim da Família",
-    rewardCoins: 40,
-    rewardXp: 30,
-    rewardPotions: 2,
-  },
-  {
-    sender: "mamae",
-    senderName: "Mamãe Renata",
-    avatarEmoji: "👩‍👧",
-    title: "Pedido da Mamãe: Cuidar do Cachorrinho Pipoca!",
-    text: (name) =>
-      `Filha ${name}, dê um carinho bem gostoso no nosso cachorrinho Pipoca no quintal da casa ou no Bosque dos Pets!`,
-    targetSubjectId: "pet",
-    targetCityName: "Quintal da Família",
-    rewardCoins: 40,
-    rewardXp: 30,
-    rewardPotions: 2,
-  },
-  {
-    sender: "mamae",
-    senderName: "Mamãe Renata",
-    avatarEmoji: "👩‍👧",
-    title: "Pedido da Mamãe: Abraçar a Irmã!",
-    text: (name, sisterName) =>
-      `Meu amor ${name}, dê um abraço bem carinhoso na sua irmã ${sisterName} perto do quintal e brinquem juntas com amor!`,
-    targetSubjectId: "irma",
-    targetCityName: "Vila da Família",
-    rewardCoins: 40,
-    rewardXp: 30,
-    rewardPotions: 2,
-  },
-];
+    // Missões Urgentes do Papai Carlos (Bloqueio restritivo ativo de rotas)
+    {
+      sender: "papai",
+      senderName: "Papai Carlos",
+      avatarEmoji: "👨‍👧",
+      title: "Missão Urgente do Pai: Investigar Ciências no Vale!",
+      text: (name) =>
+        `Filha ${name}, vá resolver a matéria de Ciências no Vale das Ciências! Não passe para outras cidades antes de concluir esse estudo!`,
+      targetSubjectId: "ciencias",
+      targetCityName: "Vale das Ciências",
+      rewardCoins: 15,
+      rewardXp: 40,
+    },
+    {
+      sender: "papai",
+      senderName: "Papai Carlos",
+      avatarEmoji: "👨‍👧",
+      title: "Missão Urgente do Pai: Multiplicação na Metrópole!",
+      text: (name) =>
+        `Filha ${name}, o Professor Pitágoras precisa da sua ajuda na Metrópole da Matemática com a tabuada! Vá direto para lá resolver o desafio!`,
+      targetSubjectId: "matematica",
+      targetCityName: "Metrópole da Matemática",
+      rewardCoins: 15,
+      rewardXp: 40,
+    },
+    {
+      sender: "papai",
+      senderName: "Papai Carlos",
+      avatarEmoji: "👨‍👧",
+      title: "Missão Urgente do Pai: Leitura na Cidadela!",
+      text: (name) =>
+        `Filha ${name}, a Dona Palavra tem um livro especial para você na Cidadela do Português! Vá lá agora mesmo e mostre sua dedicação!`,
+      targetSubjectId: "portugues",
+      targetCityName: "Cidadela do Português",
+      rewardCoins: 15,
+      rewardXp: 40,
+    },
+    {
+      sender: "papai",
+      senderName: "Papai Carlos",
+      avatarEmoji: "👨‍👧",
+      title: "Missão Urgente do Pai: Inglês no Distrito Tech!",
+      text: (name) =>
+        `Filha ${name}, hora da aula prática com o Teacher Oliver no Distrito de Inglês! Conclua o desafio de vocabulário antes de passear!`,
+      targetSubjectId: "ingles",
+      targetCityName: "Distrito de Inglês & Tech",
+      rewardCoins: 15,
+      rewardXp: 40,
+    },
+    // Missões Carinhosas da Mamãe Renata (Cuidado doméstico com pets e plantas -> Moedas + Poções!)
+    {
+      sender: "mamae",
+      senderName: "Mamãe Renata",
+      avatarEmoji: "👩‍👧",
+      title: "Pedido da Mamãe: Regar as Plantinhas do Jardim!",
+      text: (name) =>
+        `Filha ${name}, regue com amor o canteiro de flores da nossa casa! Ganhe moedas e poções curativas para seus Pokémon!`,
+      targetSubjectId: "flores",
+      targetCityName: "Jardim da Família",
+      rewardCoins: 12,
+      rewardXp: 30,
+      rewardPotions: 1,
+    },
+    {
+      sender: "mamae",
+      senderName: "Mamãe Renata",
+      avatarEmoji: "👩‍👧",
+      title: "Pedido da Mamãe: Cuidar do Cachorrinho Pipoca!",
+      text: (name) =>
+        `Filha ${name}, dê um carinho bem gostoso no nosso cachorrinho Pipoca no quintal da casa ou no Bosque dos Pets!`,
+      targetSubjectId: "pet",
+      targetCityName: "Quintal da Família",
+      rewardCoins: 12,
+      rewardXp: 30,
+      rewardPotions: 1,
+    },
+    {
+      sender: "mamae",
+      senderName: "Mamãe Renata",
+      avatarEmoji: "👩‍👧",
+      title: "Pedido da Mamãe: Abraçar a Irmã!",
+      text: (name, sisterName) =>
+        `Meu amor ${name}, dê um abraço bem carinhoso na sua irmã ${sisterName} perto do quintal e brinquem juntas com amor!`,
+      targetSubjectId: "irma",
+      targetCityName: "Vila da Família",
+      rewardCoins: 12,
+      rewardXp: 30,
+      rewardPotions: 1,
+    },
+  ];
 
 export default function RpgPage() {
   // Player Profile & Cloud Login State
@@ -435,15 +459,31 @@ export default function RpgPage() {
 
   // Player year: Cecília (4) or Bianca (2)
   const [currentYear, setCurrentYear] = useState<StudentYear>(4);
-  const isPlayerCecilia = currentYear === 4;
+  const isPlayerCecilia = activeProfileId ? activeProfileId === "cecilia" : currentYear === 4;
   const playerName = isPlayerCecilia ? "Cecília" : "Bianca";
   const sisterName = isPlayerCecilia ? "Bianca" : "Cecília";
 
-  // Score & Coins (Novo Jogo: 50 moedas iniciais, 0 XP)
-  const [coins, setCoins] = useState<number>(50);
+  // Score & Coins (Economia Equilibrada: 20 moedas iniciais, 0 XP)
+  const [coins, setCoins] = useState<number>(20);
   const [xp, setXp] = useState<number>(0);
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [showHelp, setShowHelp] = useState<boolean>(false);
+
+  // School Chapters & Study-Before-Hunt Progression State
+  const [completedSchoolChapters, setCompletedSchoolChapters] = useState<string[]>([]);
+  const completedSchoolChaptersRef = useRef<string[]>([]);
+  const [wildHuntQuota, setWildHuntQuota] = useState<number>(0);
+  const wildHuntQuotaRef = useRef<number>(0);
+  const [isSchoolModalOpen, setIsSchoolModalOpen] = useState<boolean>(false);
+  const [activeSchoolLesson, setActiveSchoolLesson] = useState<SchoolChapterLesson | null>(null);
+
+  useEffect(() => {
+    completedSchoolChaptersRef.current = completedSchoolChapters;
+  }, [completedSchoolChapters]);
+
+  useEffect(() => {
+    wildHuntQuotaRef.current = wildHuntQuota;
+  }, [wildHuntQuota]);
 
   // Active Zone tracking & Banner
   const [currentZone, setCurrentZone] = useState<string>("Casa da Família • Quarto das Meninas");
@@ -540,6 +580,12 @@ export default function RpgPage() {
   // Multiplayer Live Synchronization & Trade State
   const [isTradeModalOpen, setIsTradeModalOpen] = useState<boolean>(false);
   const [otherPlayerSync, setOtherPlayerSync] = useState<SisterSyncState | null>(null);
+  const sisterRenderRef = useRef<{ drawX: number; drawY: number; walkFrame: number }>({
+    drawX: 32,
+    drawY: 154,
+    walkFrame: 0,
+  });
+  const realtimeChannelRef = useRef<any>(null);
 
   // Explorer Skills (HM: Surf, Cut, Flash, Smash)
   const [explorerSkills, setExplorerSkills] = useState<ExplorerSkills>({
@@ -591,48 +637,160 @@ export default function RpgPage() {
     setUnlockedWardrobeItems((prev) => [...prev, itemId]);
   };
 
-  // Real-time multiplayer synchronization with Sister's tablet
+  // Real-time multiplayer synchronization with Sister's tablet (Supabase Realtime Broadcast + Fast Local API Sync)
   useEffect(() => {
+    if (!activeProfileId) return;
+
+    const buildCurrentPayload = (): SisterSyncState => {
+      const p = playerRef.current;
+      const currentTile = mapData.current[p.gridY]?.[p.gridX];
+      return {
+        sisterName: playerName,
+        x: p.gridX,
+        y: p.gridY,
+        drawX: p.drawX,
+        drawY: p.drawY,
+        facing: p.direction,
+        isMoving: p.isMoving,
+        isSurfing: !activeInterior && explorerSkills.surf && currentTile === "W",
+        interiorId: activeInterior?.buildingId || null,
+        interiorFloor: activeInterior?.floor || null,
+        currentZone,
+        customization,
+        activePokemonName: pokemonList[0]?.name,
+        lastSeen: Date.now(),
+      };
+    };
+
+    // 1. Setup Instant Supabase Realtime Broadcast Channel (Cross-Tablet Cloud Sync < 50ms)
+    const supabase = getSupabaseClient();
+    let channel: any = null;
+    if (supabase) {
+      channel = supabase.channel("vila_saber_live_multiplayer", {
+        config: { broadcast: { self: false } },
+      });
+
+      channel
+        .on("broadcast", { event: "sister_move" }, (payload: { payload: SisterSyncState }) => {
+          const remote = payload?.payload;
+          if (remote && remote.sisterName && remote.sisterName !== playerName) {
+            setOtherPlayerSync({
+              ...remote,
+              sisterName,
+              lastSeen: Date.now(),
+            });
+          }
+        })
+        .subscribe((status: string) => {
+          if (status === "SUBSCRIBED") {
+            realtimeChannelRef.current = channel;
+            channel.send({
+              type: "broadcast",
+              event: "sister_move",
+              payload: buildCurrentPayload(),
+            }).catch(() => {});
+          }
+        });
+    }
+
+    // 2. Fast Movement Broadcast Loop (every 150ms when moving, or 900ms idle heartbeat)
+    let lastSentMoving = false;
+    let lastBroadcastTime = 0;
+    const fastBroadcastInterval = setInterval(() => {
+      const p = playerRef.current;
+      const now = Date.now();
+      if (p.isMoving || lastSentMoving || now - lastBroadcastTime >= 900) {
+        lastSentMoving = p.isMoving;
+        lastBroadcastTime = now;
+        if (realtimeChannelRef.current) {
+          realtimeChannelRef.current
+            .send({
+              type: "broadcast",
+              event: "sister_move",
+              payload: buildCurrentPayload(),
+            })
+            .catch(() => {});
+        }
+      }
+    }, 150);
+
+    // 3. Local API Sync Fallback (every 600ms for Wi-Fi / LAN without Supabase)
     const syncInterval = setInterval(async () => {
       try {
-        const p = playerRef.current;
-        const currentTile = mapData.current[p.gridY]?.[p.gridX];
+        const payload = buildCurrentPayload();
         const res = await fetch("/api/rpg/sync", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            sisterName,
-            x: p.gridX,
-            y: p.gridY,
-            facing: p.direction,
-            isMoving: p.isMoving,
-            isSurfing: explorerSkills.surf && currentTile === "W",
-            customization,
-            activePokemonName: pokemonList[0]?.name,
-          }),
+          body: JSON.stringify(payload),
         });
 
         if (res.ok) {
           const data = await res.json();
           if (data.otherPlayer) {
-            setOtherPlayerSync(data.otherPlayer);
+            setOtherPlayerSync((prev) => {
+              // If Realtime already delivered a newer packet (< 1.2s ago), keep the fresher one
+              if (prev && Date.now() - prev.lastSeen < 450) {
+                return prev;
+              }
+              return {
+                ...data.otherPlayer,
+                sisterName,
+                lastSeen: Date.now(),
+              };
+            });
           } else {
-            setOtherPlayerSync(null);
+            setOtherPlayerSync((prev) => {
+              if (prev && Date.now() - prev.lastSeen < 12000) return prev;
+              return null;
+            });
           }
         }
       } catch {
         // Silently ignore if offline
       }
-    }, 1500);
+    }, 600);
 
-    return () => clearInterval(syncInterval);
-  }, [sisterName, explorerSkills.surf, customization, pokemonList]);
+    return () => {
+      clearInterval(fastBroadcastInterval);
+      clearInterval(syncInterval);
+      if (channel && supabase) {
+        supabase.removeChannel(channel);
+        realtimeChannelRef.current = null;
+      }
+    };
+  }, [
+    activeProfileId,
+    playerName,
+    sisterName,
+    activeInterior,
+    currentZone,
+    explorerSkills.surf,
+    customization,
+    pokemonList,
+  ]);
 
   // Knowledge Battle Modal State
   const [activeBattle, setActiveBattle] = useState<RocketBattleData | null>(null);
 
   // Notice alert when a route is newly opened or Pokemon stolen
   const [victoryNotice, setVictoryNotice] = useState<string | null>(null);
+  const [showRocketHudModal, setShowRocketHudModal] = useState<boolean>(false);
+
+  // Retro GBA Pause / Start Menu Drawer
+  const [isStartMenuOpen, setIsStartMenuOpen] = useState<boolean>(false);
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  const [isMissionBannerExpanded, setIsMissionBannerExpanded] = useState<boolean>(false);
+
+  const toggleFullscreen = useCallback(() => {
+    if (typeof document === "undefined") return;
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen?.().catch(() => {});
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen?.().catch(() => {});
+      setIsFullscreen(false);
+    }
+  }, []);
 
   // Steps since last encounter in tall grass
   const tallGrassSteps = useRef<number>(0);
@@ -641,11 +799,62 @@ export default function RpgPage() {
   // POKÉCELULAR STATES & SIMULATION
   // ========================================================
   const [isPhoneOpen, setIsPhoneOpen] = useState<boolean>(false);
+  const [phoneInitialTab, setPhoneInitialTab] = useState<"dad" | "mom" | "all" | "map">("dad");
   const [hasUnreadPhone, setHasUnreadPhone] = useState<boolean>(true);
-  const [phoneToast, setPhoneToast] = useState<{ sender: string; title: string } | null>({
+  const [phoneToast, setPhoneToast] = useState<{ sender: string; title: string; targetId?: string } | null>({
     sender: "Papai Carlos",
     title: "Nova Missão Escolar no PokéCelular!",
+    targetId: "viridian",
   });
+
+  // Active GPS Route Plotted on Overworld Map & Ground
+  const [activeGpsRoute, setActiveGpsRoute] = useState<{
+    targetId: string;
+    targetName: string;
+    targetX: number;
+    targetY: number;
+  } | null>(null);
+
+  // Mandatory 5-Step Onboarding Tutorial (1..5 = active, 6 = completed)
+  const [tutorialStep, setTutorialStep] = useState<number>(1);
+  const tutorialStepRef = useRef<number>(1);
+
+  const activateGpsRouteToTarget = useCallback((cityOrSubjectId: string) => {
+    const key = (cityOrSubjectId || "").toLowerCase();
+    const gpsTargets: Record<string, { targetName: string; targetX: number; targetY: number }> = {
+      pallet: { targetName: "Pallet Town • Casa & Jardim", targetX: 31, targetY: 155 },
+      vila: { targetName: "Pallet Town • Casa da Família", targetX: 32, targetY: 154 },
+      flores: { targetName: "Jardim da Mamãe (Pallet Town)", targetX: 30, targetY: 155 },
+      pet: { targetName: "Pipoca no Quintal (Pallet Town)", targetX: 29, targetY: 155 },
+      viridian: { targetName: "Escola da Cidade de Viridian", targetX: 33, targetY: 109 },
+      matematica: { targetName: "Escola & Academia de Matemática (Viridian / Pewter)", targetX: 33, targetY: 109 },
+      pewter: { targetName: "Cidade de Pewter (Noroeste)", targetX: 34, targetY: 48 },
+      cerulean: { targetName: "Escola de Ciências de Cerulean", targetX: 108, targetY: 44 },
+      ciencias: { targetName: "Vale das Ciências (Cerulean City)", targetX: 108, targetY: 44 },
+      celadon: { targetName: "Escola de Português & Shopping (Celadon)", targetX: 70, targetY: 85 },
+      portugues: { targetName: "Cidadela do Português (Celadon City)", targetX: 70, targetY: 85 },
+      saffron: { targetName: "Escola de Geografia (Saffron City)", targetX: 114, targetY: 85 },
+      geografia: { targetName: "Escola de Geografia (Saffron City)", targetX: 114, targetY: 85 },
+      vermilion: { targetName: "Escola de Inglês (Vermilion City)", targetX: 113, targetY: 124 },
+      ingles: { targetName: "Distrito de Inglês (Vermilion City)", targetX: 113, targetY: 124 },
+      fuchsia: { targetName: "Safari Zone & Biologia (Fuchsia City)", targetX: 108, targetY: 145 },
+      biologia: { targetName: "Safari Zone de Biologia (Fuchsia City)", targetX: 108, targetY: 145 },
+      cinnabar: { targetName: "Laboratório de Fósseis (Cinnabar Island)", targetX: 32, targetY: 172 },
+      quimica: { targetName: "Laboratório de Química & Fósseis (Cinnabar)", targetX: 32, targetY: 172 },
+      indigo: { targetName: "Indigo Plateau (Cúpula dos Campeões)", targetX: 20, targetY: 19 },
+    };
+    const resolved = gpsTargets[key] || gpsTargets.viridian;
+    setActiveGpsRoute({
+      targetId: key,
+      targetName: resolved.targetName,
+      targetX: resolved.targetX,
+      targetY: resolved.targetY,
+    });
+    if (tutorialStepRef.current === 2) {
+      tutorialStepRef.current = 3;
+      setTutorialStep(3);
+    }
+  }, []);
 
   // Indigo Plateau Exam & Revision States (synchronized with Vila do Saber via localStorage)
   const [exams, setExams] = useState<ExamAlert[]>(() => {
@@ -675,7 +884,7 @@ export default function RpgPage() {
       const updated = idx >= 0 ? prev.map((e, i) => (i === idx ? newExam : e)) : [...prev, newExam];
       try {
         localStorage.setItem("vila_exams", JSON.stringify(updated));
-      } catch {}
+      } catch { }
       return updated;
     });
     setVictoryNotice(`📅 Prova de ${newExam.subjectName} cadastrada! O Indigo Plateau ativará a Revisão Geral!`);
@@ -687,7 +896,7 @@ export default function RpgPage() {
       const updated = prev.filter((e) => e.id !== examId);
       try {
         localStorage.setItem("vila_exams", JSON.stringify(updated));
-      } catch {}
+      } catch { }
       return updated;
     });
   };
@@ -704,7 +913,7 @@ export default function RpgPage() {
       : "Filha Bianca, vá até o Vale das Ciências estudar os seres vivos e vencer a barreira da Equipe Rocket!",
     targetSubjectId: isPlayerCecilia ? "matematica" : "ciencias",
     targetCityName: isPlayerCecilia ? "Metrópole da Matemática" : "Vale das Ciências",
-    rewardCoins: 50,
+    rewardCoins: 15,
     rewardXp: 40,
     requiredCount: 1,
     currentCount: 0,
@@ -724,7 +933,7 @@ export default function RpgPage() {
       timeAgo: "Agora",
       targetSubjectId: isPlayerCecilia ? "matematica" : "ciencias",
       targetCityName: isPlayerCecilia ? "Metrópole da Matemática" : "Vale das Ciências",
-      rewardCoins: 50,
+      rewardCoins: 15,
       rewardXp: 40,
       isCompleted: false,
       requiredToUnlockRoute: true,
@@ -736,8 +945,8 @@ export default function RpgPage() {
       avatarEmoji: "👩‍👧",
       text: `Bom dia, meu amorzinho! Beba bastante água, regue as plantinhas no jardim da nossa casa e dê um carinho bem gostoso no Pipoca!`,
       timeAgo: "10 min atrás",
-      rewardCoins: 40,
-      rewardPotions: 2,
+      rewardCoins: 12,
+      rewardPotions: 1,
       isCompleted: false,
     },
   ]);
@@ -771,6 +980,17 @@ export default function RpgPage() {
   const markQuestionAnswered = useCallback(
     (questionId: string) => {
       if (!questionId) return;
+      // Advance mandatory tutorial from Step 4 (First Test) -> Step 5 (First Capture)
+      if (tutorialStepRef.current === 4) {
+        tutorialStepRef.current = 5;
+        setTutorialStep(5);
+      }
+      // Grant +3 wild hunt quota for solving a school question
+      setWildHuntQuota((prev) => {
+        const next = prev + 3;
+        wildHuntQuotaRef.current = next;
+        return next;
+      });
       if (answeredQuestionIdsRef.current.includes(questionId)) return;
       const updated = [...answeredQuestionIdsRef.current, questionId];
       answeredQuestionIdsRef.current = updated;
@@ -783,6 +1003,7 @@ export default function RpgPage() {
           if (raw) {
             const parsed = JSON.parse(raw);
             parsed.answeredQuestionIds = updated;
+            parsed.wildHuntQuota = wildHuntQuotaRef.current;
             localStorage.setItem(localKey, JSON.stringify(parsed));
           }
         } catch (e) {
@@ -864,6 +1085,8 @@ export default function RpgPage() {
     isTradeModalOpen,
     isExamModalOpen,
     isCloudSettingsOpen,
+    isStarterModalOpen,
+    isSchoolModalOpen,
     showHelp,
   ]);
 
@@ -977,14 +1200,67 @@ export default function RpgPage() {
     setActiveProfileId(data.id);
     setCurrentYear(data.year);
     setProfilePin(data.pin || (data.id === "cecilia" ? "4444" : "2222"));
-    setCoins(typeof data.coins === "number" ? data.coins : 180);
-    setXp(typeof data.xp === "number" ? data.xp : 420);
+    setCoins(typeof data.coins === "number" ? data.coins : 20);
+    setXp(typeof data.xp === "number" ? data.xp : 0);
     if (data.inventory) setInventory(data.inventory);
+    if (Array.isArray(data.stolenPokemonList)) setStolenPokemonList(data.stolenPokemonList);
+    if (data.unlockedRoutes) setUnlockedRoutes((prev) => ({ ...prev, ...data.unlockedRoutes }));
+    if (data.explorerSkills) setExplorerSkills(data.explorerSkills);
+    if (data.gymBadges) setGymBadges(data.gymBadges);
+    if (data.customization) setCustomization(data.customization);
+    if (Array.isArray(data.unlockedWardrobeItems)) setUnlockedWardrobeItems(data.unlockedWardrobeItems);
+    if (data.activeQuest !== undefined) setActiveQuest(data.activeQuest);
+    if (Array.isArray(data.phoneMessages) && data.phoneMessages.length > 0) setMessages(data.phoneMessages);
+    if (data.rivalConfig) setRivalConfig(data.rivalConfig);
+    if (Array.isArray(data.answeredQuestionIds)) {
+      answeredQuestionIdsRef.current = data.answeredQuestionIds;
+      setAnsweredQuestionIds(data.answeredQuestionIds);
+    }
+    if (Array.isArray(data.completedSchoolChapters)) {
+      completedSchoolChaptersRef.current = data.completedSchoolChapters;
+      setCompletedSchoolChapters(data.completedSchoolChapters);
+    } else {
+      completedSchoolChaptersRef.current = [];
+      setCompletedSchoolChapters([]);
+    }
+    if (typeof data.wildHuntQuota === "number") {
+      wildHuntQuotaRef.current = data.wildHuntQuota;
+      setWildHuntQuota(data.wildHuntQuota);
+    } else {
+      wildHuntQuotaRef.current = 0;
+      setWildHuntQuota(0);
+    }
     const hasPkmn = Array.isArray(data.pokemonList) && data.pokemonList.length > 0;
     if (hasPkmn) {
-      setPokemonList(data.pokemonList);
+      // Ensure first 6 are in active party unless explicitly marked inBox
+      const normalizedList = data.pokemonList.map((p, idx) => ({
+        ...p,
+        inBox: typeof p.inBox === "boolean" ? p.inBox : idx >= 6,
+      }));
+      setPokemonList(normalizedList);
     } else {
       setPokemonList([]);
+    }
+
+    // Restore or compute mandatory 5-step tutorial state
+    if (typeof data.tutorialStep === "number") {
+      tutorialStepRef.current = data.tutorialStep;
+      setTutorialStep(data.tutorialStep);
+    } else if (!hasPkmn) {
+      tutorialStepRef.current = 1;
+      setTutorialStep(1);
+    } else if ((data.completedSchoolChapters || []).length === 0) {
+      tutorialStepRef.current = 2;
+      setTutorialStep(2);
+    } else if ((data.answeredQuestionIds || []).length === 0) {
+      tutorialStepRef.current = 4;
+      setTutorialStep(4);
+    } else if ((data.pokemonList || []).length < 2) {
+      tutorialStepRef.current = 5;
+      setTutorialStep(5);
+    } else {
+      tutorialStepRef.current = 6;
+      setTutorialStep(6);
     }
 
     if (!hasPkmn) {
@@ -1056,21 +1332,32 @@ export default function RpgPage() {
     setIsCheckingInitialSession(false);
   }, []);
 
-  // Check stored active profile session on page mount
+  // Check stored active profile session on page mount (and run one-time master reset if needed)
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const storedActive = localStorage.getItem(ACTIVE_PROFILE_KEY) as ProfileId | null;
-    if (storedActive === "cecilia" || storedActive === "bianca") {
-      loadProfileSave(storedActive)
-        .then(({ data, fromCloud }) => {
+
+    const initSession = async () => {
+      if (localStorage.getItem(MASTER_RESET_KEY) !== "done") {
+        await resetAllProfilesToZero();
+        setActiveProfileId(null);
+        setIsCheckingInitialSession(false);
+        return;
+      }
+
+      const storedActive = localStorage.getItem(ACTIVE_PROFILE_KEY) as ProfileId | null;
+      if (storedActive === "cecilia" || storedActive === "bianca") {
+        try {
+          const { data, fromCloud } = await loadProfileSave(storedActive);
           applySaveData(data, fromCloud);
-        })
-        .catch(() => {
+        } catch {
           setIsCheckingInitialSession(false);
-        });
-    } else {
-      setIsCheckingInitialSession(false);
-    }
+        }
+      } else {
+        setIsCheckingInitialSession(false);
+      }
+    };
+
+    initSession();
   }, [applySaveData]);
 
   // Performs save to localStorage and Supabase database
@@ -1104,6 +1391,9 @@ export default function RpgPage() {
         phoneMessages: messages,
         rivalConfig,
         answeredQuestionIds: answeredQuestionIdsRef.current,
+        completedSchoolChapters: completedSchoolChaptersRef.current,
+        wildHuntQuota: wildHuntQuotaRef.current,
+        tutorialStep: tutorialStepRef.current,
         updatedAt: new Date().toISOString(),
       };
 
@@ -1147,6 +1437,9 @@ export default function RpgPage() {
       messages,
       rivalConfig,
       answeredQuestionIds,
+      completedSchoolChapters,
+      wildHuntQuota,
+      activeInterior,
       playSfx,
     ]
   );
@@ -1215,7 +1508,7 @@ export default function RpgPage() {
           : "Parabéns pelo seu Pokémon inicial, Bianca! Saia pela porta da nossa casa em Pallet Town, cruze a Rota 1 e vá até o Vale das Ciências para cuidar dos animais e desvendar os mistérios da natureza!",
         targetSubjectId: isCecilia ? "matematica" : "ciencias",
         targetCityName: isCecilia ? "Metrópole da Matemática" : "Vale das Ciências",
-        rewardCoins: 100,
+        rewardCoins: 20,
         rewardXp: 50,
         requiredCount: 1,
         currentCount: 0,
@@ -1229,11 +1522,11 @@ export default function RpgPage() {
         sender: "papai",
         senderName: "Papai Carlos",
         avatarEmoji: "👨‍👧",
-        text: `Parabéns pela escolha do seu ${starter.name}, minha filha! Agora o seu PokéCelular e o painel de missões estão liberados! Você pode consultar recados, ver o mapa de Kanto e responder às perguntas da Vila do Saber para ganhar moedas e evoluir seu Pokémon! Estamos torcendo por você!`,
+        text: `Parabéns pela escolha do seu ${starter.name}, minha filha! Agora o seu PokéCelular e o painel de missões estão liberados! Lembre-se: antes de caçar Pokémon na grama alta, passe na Escola da Cidade ou conclua tarefas escolares para liberar sua Cota de Caça!`,
         timeAgo: "Agora",
         targetSubjectId: isCecilia ? "matematica" : "ciencias",
         targetCityName: isCecilia ? "Metrópole da Matemática" : "Vale das Ciências",
-        rewardCoins: 100,
+        rewardCoins: 20,
         rewardXp: 50,
         isCompleted: false,
         requiredToUnlockRoute: true,
@@ -1241,13 +1534,18 @@ export default function RpgPage() {
       setMessages([initialPhoneMessage]);
 
       playSfx("fanfare");
-      setVictoryNotice(`Recebeu ${starter.name} ${starter.emoji}! PokéCelular & Missões liberados!`);
+      // Advance Mandatory Tutorial from Step 1 (Pick Starter) -> Step 2 (Open PokéCelular & Plot Route)
+      if (tutorialStepRef.current <= 1) {
+        tutorialStepRef.current = 2;
+        setTutorialStep(2);
+      }
+      setVictoryNotice(`Recebeu ${starter.name} ${starter.emoji}! Agora abra o 📱 PokéCelular e clique em "Criar Rota no Mapa"!`);
 
       setActiveDialog({
         speaker: "Papai Carlos 👨‍👧",
         role: "Família • Entrega do Inicial",
         avatarSprite: "parent",
-        text: `Que momento lindo! O seu ${starter.name} já tem um carinho imenso por você! Entreguei a você o 📱 PokéCelular, o caderno de missões, 5 Pokébolas e 2 Poções. Vá lá fora em Pallet Town e mostre a Kanto do que uma jovem sábia é capaz!`,
+        text: `Que momento lindo! O seu ${starter.name} já tem um carinho imenso por você! Entreguei a você o 📱 PokéCelular (com o Mapa Guia de Kanto!), 5 Pokébolas e 2 Poções. Lembre-se da regra da nossa família: estude primeiro na Escola da Cidade ou vença desafios escolares para liberar a caça aos Pokémon na grama alta!`,
       });
 
       // Perform immediate save to local and Supabase cloud
@@ -1275,6 +1573,8 @@ export default function RpgPage() {
           phoneMessages: [initialPhoneMessage],
           rivalConfig: updatedRivalConfig,
           answeredQuestionIds: answeredQuestionIdsRef.current,
+          completedSchoolChapters: completedSchoolChaptersRef.current,
+          wildHuntQuota: wildHuntQuotaRef.current,
           updatedAt: new Date().toISOString(),
         };
         saveProfileSave(saveSnapshot).catch(console.warn);
@@ -1323,16 +1623,24 @@ export default function RpgPage() {
   ]);
 
   // Helper to open PokéCelular with Starter Pokémon lock
-  const openPhoneIfAllowed = useCallback(() => {
-    if (pokemonList.length === 0) {
-      playSfx("pop");
-      setVictoryNotice("📱 O PokéCelular será liberado assim que você escolher seu Pokémon inicial com o Papai!");
-      return;
-    }
-    setIsPhoneOpen(true);
-    setHasUnreadPhone(false);
-    playSfx("open");
-  }, [pokemonList.length, playSfx]);
+  const openPhoneIfAllowed = useCallback(
+    (tabOrEvent?: "dad" | "mom" | "all" | "map" | React.MouseEvent<any>) => {
+      if (pokemonList.length === 0) {
+        playSfx("pop");
+        setVictoryNotice("📱 O PokéCelular será liberado assim que você escolher seu Pokémon inicial com o Papai!");
+        return;
+      }
+      const resolvedTab =
+        typeof tabOrEvent === "string" && ["dad", "mom", "all", "map"].includes(tabOrEvent)
+          ? tabOrEvent
+          : "dad";
+      setPhoneInitialTab(resolvedTab);
+      setIsPhoneOpen(true);
+      setHasUnreadPhone(false);
+      playSfx("open");
+    },
+    [pokemonList.length, playSfx]
+  );
 
   // Auto-save position when player stops moving on a tile (debounced 1.5s)
   useEffect(() => {
@@ -1491,8 +1799,8 @@ export default function RpgPage() {
             avatarEmoji: "👩‍👧",
             text: `Oi ${playerName}! Não se esqueça de regar o canteiro de flores e dar água para o Pipoca no quintal para ganhar suas Poções extras!`,
             timeAgo: "Agora",
-            rewardCoins: 40,
-            rewardPotions: 2,
+            rewardCoins: 12,
+            rewardPotions: 1,
             isCompleted: false,
           },
           ...prev,
@@ -1530,8 +1838,7 @@ export default function RpgPage() {
               energy: newStatus === "tired" ? 30 : 60,
             };
             setVictoryNotice(
-              `🐾 Seu ${pkmn.name} está ${
-                newStatus === "tired" ? "cansadinho" : "indisposto"
+              `🐾 Seu ${pkmn.name} está ${newStatus === "tired" ? "cansadinho" : "indisposto"
               }! Abra sua Bolsa 🎒 para cuidar dele!`
             );
             playSfx("pop");
@@ -1582,12 +1889,17 @@ export default function RpgPage() {
       ) {
         setActiveQuest((prev) => (prev ? { ...prev, isCompleted: true } : null));
         const isMom = activeQuest.sender === "mamae";
-        const awardedCoins = activeQuest.rewardCoins || 40;
+        const awardedCoins = activeQuest.rewardCoins || (isMom ? 12 : 15);
         const awardedXp = activeQuest.rewardXp || 30;
-        const awardedPotions = isMom ? activeQuest.rewardPotions || 2 : 0;
+        const awardedPotions = isMom ? activeQuest.rewardPotions || 1 : 0;
 
         setCoins((c) => c + awardedCoins);
         setXp((x) => x + awardedXp);
+        setWildHuntQuota((q) => {
+          const next = q + 3;
+          wildHuntQuotaRef.current = next;
+          return next;
+        });
 
         // Award potions to inventory if Mom's quest
         if (awardedPotions > 0) {
@@ -1638,12 +1950,21 @@ export default function RpgPage() {
     [activeQuest, playSfx]
   );
 
-  // Award EXP to all Pokemon in team with double EXP support for Indigo Plateau
+  // Award EXP ONLY to the 6 Active Party Pokemon (Pokémon in Poké-Box never level up or evolve all at once!)
   const awardExpToTeam = useCallback(
     (expGain: number, isDoubled: boolean = false) => {
       setPokemonList((prev) => {
         if (prev.length === 0) return prev;
-        const updatedList = prev.map((pkmn, idx) => {
+        let activeCount = 0;
+        let evolutionTriggered = false;
+
+        const updatedList = prev.map((pkmn) => {
+          const isInActiveParty = !pkmn.inBox && activeCount < 6;
+          if (!isInActiveParty) {
+            return { ...pkmn, inBox: true };
+          }
+          activeCount += 1;
+
           const currentPkmnExp = (pkmn.exp || 0) + expGain;
           const expNeeded = (pkmn.level || 5) * 30;
           let newLevel = pkmn.level || 5;
@@ -1656,16 +1977,18 @@ export default function RpgPage() {
 
           const updated: CapturedPokemon = {
             ...pkmn,
+            inBox: false,
             exp: currentPkmnExp,
             level: newLevel,
             friendship: Math.min(100, (pkmn.friendship || 50) + (isDoubled ? 10 : 5)),
           };
 
-          // If leading pokemon leveled up, check level evolution
-          if (idx === 0 && leveledUp) {
+          // Trigger level evolution for at most 1 Active Party member at a time
+          if (leveledUp && !evolutionTriggered) {
             const kantoDef = getPokemonById(updated.pokedexId);
             const levelEvo = kantoDef?.evolutions?.find((e) => e.method === "level");
             if (levelEvo && levelEvo.level && newLevel >= levelEvo.level) {
+              evolutionTriggered = true;
               setTimeout(() => {
                 setActiveEvolution({
                   pokemon: updated,
@@ -1683,8 +2006,8 @@ export default function RpgPage() {
         playSfx("star");
         setVictoryNotice(
           isDoubled
-            ? `⚡ BÔNUS DE EXP EM DOBRO ATIVADO! Toda a equipe Pokémon recebeu +${expGain} EXP no Simulado do Indigo Plateau!`
-            : `⭐ Sua equipe Pokémon recebeu +${expGain} EXP!`
+            ? `⚡ EXP EM DOBRO! Sua Equipe Ativa (${activeCount}/6 Pokémon) recebeu +${expGain} EXP!`
+            : `⭐ Sua Equipe Ativa (${activeCount}/6 Pokémon) recebeu +${expGain} EXP!`
         );
         setTimeout(() => setVictoryNotice(null), 6000);
 
@@ -1694,11 +2017,49 @@ export default function RpgPage() {
     [playSfx]
   );
 
-  // Trigger Wild Pokemon Encounter (Supports Regional Kanto vs Johto and Land vs Water pools with Rarity weighting)
+  // Pedagogical Study-Before-Hunt Gate (Requires School Chapter or Academic Task to hunt in tall grass)
+  const consumeWildHuntQuotaOrBlock = useCallback((): boolean => {
+    const hasStudiedAnything =
+      completedSchoolChaptersRef.current.length > 0 || answeredQuestionIdsRef.current.length > 0;
+    if (!hasStudiedAnything || wildHuntQuotaRef.current <= 0) {
+      playSfx("pop");
+      setActiveDialog({
+        speaker: "Regra Pedagógica • Estudo Antes da Caça 📚",
+        role: "Trava de Progressão Escolar",
+        avatarSprite: "prof",
+        text: !hasStudiedAnything
+          ? `Atenção, ${playerName}! Antes de caçar Pokémon na grama alta, você precisa assistir à aula interativa na 🏫 Escola da Cidade ou concluir uma tarefa escolar com os Professores! Vá até a Escola de Viridian (ou fale com um Professor) para liberar sua Cota de Caça!`
+          : `Sua Cota de Caça na grama alta chegou a 0! Visite a 🏫 Escola da Cidade para concluir um capítulo (+5 caças), responda desafios dos Professores (+3 caças) ou faça um Simulado (+8 caças) para continuar capturando Pokémon!`,
+      });
+      setVictoryNotice("📚 Estude na Escola da Cidade ou resolva questões para liberar a caça aos Pokémon!");
+      return false;
+    }
+
+    setWildHuntQuota((prev) => {
+      const next = Math.max(0, prev - 1);
+      wildHuntQuotaRef.current = next;
+      return next;
+    });
+    return true;
+  }, [playerName, playSfx]);
+
+  // Trigger Wild Pokemon Encounter (Official 6-Tier Spawn Rates: 55% / 20% / 8% / 5% / 1.5% / 0.5%)
   const triggerWildEncounter = useCallback(
     (isWaterEncounter: boolean = false, generation: RpgGeneration = 1) => {
+      if (!consumeWildHuntQuotaOrBlock()) return;
       playSfx("open");
-      const pDef = getRegionalWeightedEncounter(generation, isWaterEncounter);
+      const allBadgesEarned =
+        gymBadges.math_boulder &&
+        gymBadges.science_cascade &&
+        gymBadges.portuguese_rainbow &&
+        gymBadges.english_thunder;
+      const allowEpic = completedSchoolChaptersRef.current.length >= 1 || answeredQuestionIdsRef.current.length >= 3;
+      const pDef = getRegionalWeightedEncounter(generation, isWaterEncounter, {
+        allowLegendary: allBadgesEarned || completedSchoolChaptersRef.current.length >= 3,
+        allowEpic,
+      });
+      const category = getPokemonSpawnCategory(pDef);
+      const rateMeta = getSpawnRateMeta(category);
       const wildDef: WildPokemonDef = {
         pokedexId: pDef.pokedexId,
         species: pDef.species,
@@ -1707,6 +2068,8 @@ export default function RpgPage() {
         type: pDef.type,
         typeColor: pDef.typeColor,
         baseCatchRate: pDef.baseCatchRate,
+        rarityCategory: category,
+        spawnRateLabel: `${rateMeta.label} (${rateMeta.percentageDisplay})`,
         description: pDef.description,
         habitat: pDef.isWaterType ? "Rios e Mares (Aquático)" : pDef.habitat,
         artworkUrl: getPokemonArtworkUrl(pDef.pokedexId),
@@ -1715,15 +2078,30 @@ export default function RpgPage() {
       };
       setActiveWildEncounter(wildDef);
     },
-    [playSfx]
+    [playSfx, consumeWildHuntQuotaOrBlock, gymBadges]
   );
 
-  // Trigger Subterranean Cave Wild Pokemon Encounter (Rock, Ground, Cave Species)
+  // Trigger Subterranean Cave Wild Pokemon Encounter (Official 6-Tier Spawn Rates in Cave Pool)
   const triggerCaveWildEncounter = useCallback(() => {
+    if (!consumeWildHuntQuotaOrBlock()) return;
     playSfx("open");
-    const cavePokedexIds = [74, 41, 95, 50, 66, 35, 140, 138, 75, 42]; // Geodude, Zubat, Onix, Diglett, Machop, Clefairy, Kabuto, Omanyte, Graveler, Golbat
-    const chosenId = cavePokedexIds[Math.floor(Math.random() * cavePokedexIds.length)];
+    const rolledCat = rollOfficialSpawnCategory({
+      allowLegendary: completedSchoolChaptersRef.current.length >= 3,
+      allowEpic: true,
+    });
+    const caveByTier: Record<string, number[]> = {
+      common: [74, 41, 50], // Geodude, Zubat, Diglett (55%)
+      uncommon: [66, 75, 42], // Machop, Graveler, Golbat (20%)
+      hard: [95, 35], // Onix, Clefairy (8%)
+      rare: [147, 111, 104], // Dratini, Rhyhorn, Cubone (5%)
+      epic: [138, 140, 142], // Omanyte, Kabuto, Aerodactyl (1.5% Fósseis)
+      legendary: [144, 146, 150], // Articuno, Moltres, Mewtwo (0.5% Lendários)
+    };
+    const pool = caveByTier[rolledCat] || caveByTier.common;
+    const chosenId = pool[Math.floor(Math.random() * pool.length)];
     const pDef = getPokemonById(chosenId) || getRegionalWeightedEncounter(1, false);
+    const category = getPokemonSpawnCategory(pDef);
+    const rateMeta = getSpawnRateMeta(category);
     const wildDef: WildPokemonDef = {
       pokedexId: pDef.pokedexId,
       species: pDef.species,
@@ -1732,6 +2110,8 @@ export default function RpgPage() {
       type: pDef.type,
       typeColor: pDef.typeColor,
       baseCatchRate: pDef.baseCatchRate,
+      rarityCategory: category,
+      spawnRateLabel: `${rateMeta.label} (${rateMeta.percentageDisplay})`,
       description: pDef.description,
       habitat: "Cavernas Profundas & Montes Rochosos (Subterrâneo)",
       artworkUrl: getPokemonArtworkUrl(pDef.pokedexId),
@@ -1739,28 +2119,29 @@ export default function RpgPage() {
       animatedUrl: getPokemonAnimatedUrl(pDef.pokedexId),
     };
     setActiveWildEncounter(wildDef);
-  }, [playSfx]);
+  }, [playSfx, consumeWildHuntQuotaOrBlock]);
 
-  // Trigger Viridian Forest Wild Pokemon Encounter (Insect, Plant & Forest Species)
+  // Trigger Viridian Forest Wild Pokemon Encounter (Official 6-Tier Spawn Rates in Forest Pool)
   const triggerForestWildEncounter = useCallback(() => {
+    if (!consumeWildHuntQuotaOrBlock()) return;
     playSfx("open");
-    // Weighted encounters: Common bugs & plants, uncommon evolved forms, rare Scyther/Pinsir & signature Pikachu!
-    const forestPool = [
-      10, 10, 10, // Caterpie
-      13, 13, 13, // Weedle
-      11, 11, // Metapod
-      14, 14, // Kakuna
-      12, // Butterfree
-      15, // Beedrill
-      46, 46, // Paras
-      48, 48, // Venonat
-      43, 69, // Oddish, Bellsprout
-      123, // Scyther
-      127, // Pinsir
-      25, 25, // Pikachu!
-    ];
-    const chosenId = forestPool[Math.floor(Math.random() * forestPool.length)];
+    const rolledCat = rollOfficialSpawnCategory({
+      allowLegendary: completedSchoolChaptersRef.current.length >= 3,
+      allowEpic: completedSchoolChaptersRef.current.length >= 1,
+    });
+    const forestByTier: Record<string, number[]> = {
+      common: [10, 13, 43, 69], // Caterpie, Weedle, Oddish, Bellsprout (55%)
+      uncommon: [11, 14, 46, 48], // Metapod, Kakuna, Paras, Venonat (20%)
+      hard: [12, 15, 25], // Butterfree, Beedrill, Pikachu (8%)
+      rare: [123, 127, 147], // Scyther, Pinsir, Dratini (5%)
+      epic: [133, 102, 114], // Eevee, Exeggcute, Tangela (1.5%)
+      legendary: [151, 145], // Mew, Zapdos (0.5%)
+    };
+    const pool = forestByTier[rolledCat] || forestByTier.common;
+    const chosenId = pool[Math.floor(Math.random() * pool.length)];
     const pDef = getPokemonById(chosenId) || getRegionalWeightedEncounter(1, false);
+    const category = getPokemonSpawnCategory(pDef);
+    const rateMeta = getSpawnRateMeta(category);
     const wildDef: WildPokemonDef = {
       pokedexId: pDef.pokedexId,
       species: pDef.species,
@@ -1769,6 +2150,8 @@ export default function RpgPage() {
       type: pDef.type,
       typeColor: pDef.typeColor,
       baseCatchRate: pDef.baseCatchRate,
+      rarityCategory: category,
+      spawnRateLabel: `${rateMeta.label} (${rateMeta.percentageDisplay})`,
       description: pDef.description,
       habitat: "Floresta dos Insetos & Bosques Nativos (Viridian Forest)",
       artworkUrl: getPokemonArtworkUrl(pDef.pokedexId),
@@ -1776,7 +2159,7 @@ export default function RpgPage() {
       animatedUrl: getPokemonAnimatedUrl(pDef.pokedexId),
     };
     setActiveWildEncounter(wildDef);
-  }, [playSfx]);
+  }, [playSfx, consumeWildHuntQuotaOrBlock]);
 
   // Award EXP to active leading Pokemon and trigger level evolution if threshold met
   const awardExpToActivePokemon = useCallback(
@@ -1824,10 +2207,46 @@ export default function RpgPage() {
     [playSfx]
   );
 
-  // Handle successful capture
+  // Handle successful capture (Max 6 in Active Party; 7th+ go to Poké-Box!)
   const handleCaptureSuccess = (pokemon: CapturedPokemon) => {
-    setPokemonList((prev) => [{ ...pokemon, exp: 0, level: Math.floor(Math.random() * 4) + 3 }, ...prev]);
-    setVictoryNotice(`🎉 Parabéns! Você capturou um ${pokemon.name}! Ele foi guardado na sua Bolsa 🎒!`);
+    setPokemonList((prev) => {
+      const currentActiveParty = prev.filter((p) => !p.inBox);
+      const goesToBox = currentActiveParty.length >= 6;
+      const newEntry: CapturedPokemon = {
+        ...pokemon,
+        exp: 0,
+        level: Math.floor(Math.random() * 4) + 3,
+        inBox: goesToBox,
+      };
+      if (goesToBox) {
+        setVictoryNotice(
+          `🎉 Você capturou um ${pokemon.name}! Como sua Equipe Ativa (6/6) já está cheia, ele foi guardado no 📦 Poké-Box da sua Bolsa!`
+        );
+        return [...prev, newEntry];
+      } else {
+        setVictoryNotice(
+          `🎉 Parabéns! Você capturou um ${pokemon.name}! Ele entrou na sua Equipe Ativa (${currentActiveParty.length + 1}/6)!`
+        );
+        return [...currentActiveParty, newEntry, ...prev.filter((p) => p.inBox)];
+      }
+    });
+
+    // Complete Mandatory 5-Step Tutorial if on Step 5!
+    if (tutorialStepRef.current === 5) {
+      tutorialStepRef.current = 6;
+      setTutorialStep(6);
+      setCoins((c) => c + 15);
+      setInventory((inv) => ({ ...inv, pokeballs: (inv.pokeballs || 0) + 3 }));
+      setTimeout(() => {
+        setActiveDialog({
+          speaker: "Papai Carlos & Mamãe Renata 🎓",
+          role: "Primeira Missão Obrigatória Concluída!",
+          avatarSprite: "parent",
+          text: `Parabéns, ${playerName}! Você concluiu todos os 5 passos da Primeira Missão! Agora você já sabe toda a dinâmica do jogo: 1) Ver missões e criar rota no 📱 PokéCelular, 2) Assistir à aula na 🏫 Escola da Cidade, 3) Fazer os testes para ganhar Cota de Caça e Moedas, e 4) Capturar e evoluir sua Equipe de 6 Pokémon! Você ganhou +15 Moedas 🪙 e +3 Pokébolas 🔴 de formatura!`,
+        });
+      }, 900);
+    }
+
     playSfx("fanfare");
   };
 
@@ -1855,11 +2274,11 @@ export default function RpgPage() {
       prev.map((p) =>
         p.id === pokemonId
           ? {
-              ...p,
-              energy: p.maxEnergy,
-              status: p.status === "tired" ? "healthy" : p.status,
-              friendship: Math.min(100, p.friendship + 10),
-            }
+            ...p,
+            energy: p.maxEnergy,
+            status: p.status === "tired" ? "healthy" : p.status,
+            friendship: Math.min(100, p.friendship + 10),
+          }
           : p
       )
     );
@@ -1872,10 +2291,10 @@ export default function RpgPage() {
       prev.map((p) =>
         p.id === pokemonId
           ? {
-              ...p,
-              status: "healthy",
-              friendship: Math.min(100, p.friendship + 10),
-            }
+            ...p,
+            status: "healthy",
+            friendship: Math.min(100, p.friendship + 10),
+          }
           : p
       )
     );
@@ -1887,9 +2306,9 @@ export default function RpgPage() {
       prev.map((p) =>
         p.id === pokemonId
           ? {
-              ...p,
-              friendship: Math.min(100, p.friendship + 5),
-            }
+            ...p,
+            friendship: Math.min(100, p.friendship + 5),
+          }
           : p
       )
     );
@@ -1922,9 +2341,14 @@ export default function RpgPage() {
     if (rescued) {
       setStolenPokemonList((prev) => prev.filter((p) => p.id !== pokemonId));
       setPokemonList((prev) => [{ ...rescued, friendship: Math.min(100, rescued.friendship + 15) }, ...prev]);
-      setCoins((c) => c + 30);
+      setCoins((c) => c + 12);
       setXp((x) => x + 25);
-      setVictoryNotice(`💖 O seu ${rescued.name} foi resgatado e está são e salvo na sua Bolsa! (+30 Moedas 🪙)`);
+      setWildHuntQuota((q) => {
+        const next = q + 3;
+        wildHuntQuotaRef.current = next;
+        return next;
+      });
+      setVictoryNotice(`💖 O seu ${rescued.name} foi resgatado e está são e salvo na sua Bolsa! (+12 Moedas 🪙)`);
       playSfx("fanfare");
     }
   };
@@ -1964,15 +2388,15 @@ export default function RpgPage() {
     },
     {
       id: "sister",
-      name: isPlayerCecilia ? "Bianca (Irmã)" : "Cecília (Irmã)",
-      role: isPlayerCecilia ? "Irmã Menor (2º Ano)" : "Irmã Maior (4º Ano)",
+      name: sisterName,
+      role: isPlayerCecilia ? "Irmã Co-player (2º Ano)" : "Irmã Co-player (4º Ano)",
       x: 36,
       y: 154,
       sprite: isPlayerCecilia ? "bianca" : "cecilia",
       dialog: () =>
         isPlayerCecilia
-          ? `Oi Ceci! Quer trocar Pokémon comigo pelo Cabo Link? Vamos explorar todas as 10 cidades de Kanto e ver quem completa a Pokédex primeiro!`
-          : `Oi Bibi! Se quiser trocar Pokémon comigo pelo Cabo Link ou evoluir seu Kadabra e Haunter, estou aqui em Pallet Town!`,
+          ? `Oi Ceci! Eu sou a Bianca! Quer trocar Pokémon comigo pelo Cabo Link? Vamos explorar todas as 10 cidades de Kanto e ver quem completa a Pokédex primeiro!`
+          : `Oi Bibi! Eu sou a Cecília! Se quiser trocar Pokémon comigo pelo Cabo Link ou evoluir seu Kadabra e Haunter, estou aqui em Pallet Town!`,
     },
     {
       id: "oak",
@@ -2406,8 +2830,14 @@ export default function RpgPage() {
 
   // Active NPCs list with Engine Anti-Block Safety Guard:
   // Automatically validate that no regular NPC occupies a protected door threshold
+  // Also hides static AI sister NPC when the real sister is online in the Overworld!
   const activeNpcs: NpcDef[] = [
-    ...baseNpcs,
+    ...baseNpcs.filter((npc) => {
+      if (npc.id === "sister" && otherPlayerSync && !otherPlayerSync.interiorId) {
+        return false;
+      }
+      return true;
+    }),
     ...rocketNpcs.filter((r) => r.subjectId && !unlockedRoutes[r.subjectId]),
   ].filter((npc) => {
     // Sole Allowed Exception: Explicit story quest blocks
@@ -2504,7 +2934,7 @@ export default function RpgPage() {
       ...prev,
       [victoriousSubject]: true,
     }));
-    setCoins((c) => c + (awardedCoins || 50));
+    setCoins((c) => c + (awardedCoins || 12));
     setXp((x) => x + (awardedXp || 40));
     awardExpToActivePokemon(awardedXp || 40);
 
@@ -2514,7 +2944,7 @@ export default function RpgPage() {
       origin: { y: 0.6 },
     });
 
-    setVictoryNotice(`🚀 Vitória! A Equipe Rocket decolou de novo! A passagem para ${subjectName} está desbloqueada!`);
+    setVictoryNotice(`🚀 Vitória! A Equipe Rocket decolou de novo! A passagem para ${subjectName} está desbloqueada! (+3 Caças liberadas)`);
     completeQuestIfTarget(victoriousSubject);
 
     setTimeout(() => {
@@ -2524,10 +2954,15 @@ export default function RpgPage() {
 
   // Victory callback when defeating Rival in battle
   const handleRivalBattleVictory = (awardedCoins: number, awardedExp: number) => {
-    setCoins((c) => c + (awardedCoins || 80));
+    setCoins((c) => c + (awardedCoins || 25));
     setXp((x) => x + (awardedExp || 120));
+    setWildHuntQuota((q) => {
+      const next = q + 3;
+      wildHuntQuotaRef.current = next;
+      return next;
+    });
     awardExpToActivePokemon(awardedExp || 120);
-    setVictoryNotice(`⚡ Você superou o ${rivalConfig?.name || "Rival"} no Duelo de Sabedoria! (+${awardedCoins} Moedas 🪙, +${awardedExp} EXP)`);
+    setVictoryNotice(`⚡ Você superou o ${rivalConfig?.name || "Rival"} no Duelo de Sabedoria! (+${awardedCoins || 25} Moedas 🪙, +${awardedExp} EXP, +3 Caças)`);
   };
 
   // Initialize Map Matrix (Full Authentic Pokémon FireRed Kanto Overworld: 160x180 Grid)
@@ -2577,6 +3012,9 @@ export default function RpgPage() {
         }
         if (activeInterior.buildingId === "indigo_plateau") {
           return isIndigoPlateauWalkable(targetX, targetY);
+        }
+        if (activeInterior.buildingId.startsWith("city_school:")) {
+          return isSchoolTileWalkable(targetX, targetY);
         }
         return false;
       }
@@ -2818,8 +3256,35 @@ export default function RpgPage() {
         return;
       }
 
-      // 4. Gyms & Academies across Kanto
-      if (b.id === "math_academy" || b.id.includes("gym") || b.id.includes("dojo")) {
+      // 4. Escola da Cidade (City Schools across Kanto Metropolises)
+      if (b.id === "math_academy" || b.id.includes("school")) {
+        const subjectKey = getSchoolSubjectByBuildingId(b.id);
+        const lesson = getSchoolLesson(subjectKey, currentYear);
+        setActiveInterior({
+          buildingId: `city_school:${subjectKey}`,
+          buildingName: b.name,
+          floor: 1,
+          returnX: b.returnX,
+          returnY: b.returnY,
+        });
+        p.gridX = 6;
+        p.gridY = 8;
+        p.drawX = 6;
+        p.drawY = 8;
+        setCurrentZone(b.name);
+        setVictoryNotice(`Entrou na ${b.name} 🏫`);
+        // Automatically launch playful chapter presentation if not yet completed
+        if (!completedSchoolChaptersRef.current.includes(lesson.chapterId)) {
+          setTimeout(() => {
+            setActiveSchoolLesson(lesson);
+            setIsSchoolModalOpen(true);
+          }, 350);
+        }
+        return;
+      }
+
+      // 4b. Gyms & Dojos across Kanto
+      if (b.id.includes("gym") || b.id.includes("dojo")) {
         setActiveInterior({
           buildingId: "math_academy",
           buildingName: b.name,
@@ -2988,11 +3453,14 @@ export default function RpgPage() {
           if (item.type === "stairs_up") {
             playSfx("open");
             setActiveInterior((prev) => (prev ? { ...prev, floor: 2 } : null));
-            p.gridX = 7;
+            p.gridX = 6;
             p.gridY = 2;
-            p.drawX = 7;
+            p.drawX = 6;
             p.drawY = 2;
             p.direction = "down";
+            p.isMoving = false;
+            p.moveProgress = 0;
+            targetMoveTile.current = null;
             setCurrentZone("Casa da Família • Quarto das Meninas");
             setVictoryNotice("Subiu para o 2º Andar 🛏️");
             return;
@@ -3000,11 +3468,14 @@ export default function RpgPage() {
           if (item.type === "stairs_down") {
             playSfx("open");
             setActiveInterior((prev) => (prev ? { ...prev, floor: 1 } : null));
-            p.gridX = 9;
-            p.gridY = 2;
-            p.drawX = 9;
-            p.drawY = 2;
+            p.gridX = 8;
+            p.gridY = 3;
+            p.drawX = 8;
+            p.drawY = 3;
             p.direction = "down";
+            p.isMoving = false;
+            p.moveProgress = 0;
+            targetMoveTile.current = null;
             setCurrentZone("Casa da Família • Térreo");
             setVictoryNotice("Desceu para o 1º Andar 🏡");
             if (pokemonList.length === 0) {
@@ -3130,6 +3601,77 @@ export default function RpgPage() {
           });
           return;
         }
+      } else if (activeInterior.buildingId.startsWith("city_school:")) {
+        const subjectKey = (activeInterior.buildingId.split(":")[1] || "math") as SchoolSubjectKey;
+        const lesson = getSchoolLesson(subjectKey, currentYear);
+        const item = getSchoolInteractable(targetX, targetY) || getSchoolInteractable(p.gridX, p.gridY);
+        if (item) {
+          if (item.type === "exit") {
+            handleExitInterior();
+            return;
+          }
+          if (item.type === "smartboard" || item.type === "teacher") {
+            playSfx("open");
+            setActiveSchoolLesson(lesson);
+            setIsSchoolModalOpen(true);
+            return;
+          }
+          if (item.type === "exam_desk") {
+            if (!completedSchoolChaptersRef.current.includes(lesson.chapterId)) {
+              playSfx("pop");
+              setActiveDialog({
+                speaker: `${lesson.teacherName} ${lesson.teacherEmoji}`,
+                role: "Escola da Cidade • Aula Obrigatória",
+                avatarSprite: "prof",
+                text: `Espere um pouquinho, ${playerName}! Antes de realizar a Prova da Matéria na Bancada de Testes, assista à nossa Apresentação Lúdica do Capítulo no Quadro Interativo! Vou abrir a aula para você agora!`,
+                actionButton: {
+                  label: "Assistir Aula do Capítulo 📖",
+                  onClick: () => {
+                    setActiveSchoolLesson(lesson);
+                    setIsSchoolModalOpen(true);
+                  },
+                },
+              });
+              return;
+            }
+            const academicMap: Record<SchoolSubjectKey, AcademicSubject> = {
+              math: "matematica",
+              science: "ciencias",
+              portuguese: "portugues",
+              english: "ingles",
+              geography: "ciencias",
+            };
+            const { question: q } = getRandomAcademicQuestion(
+              academicMap[subjectKey],
+              currentYear,
+              answeredQuestionIdsRef.current
+            );
+            playSfx("open");
+            setActiveDialog({
+              speaker: `Bancada de Prova • ${lesson.subjectName}`,
+              role: lesson.chapterTitle,
+              avatarSprite: "prof",
+              text: `Parabéns por concluir a aula do capítulo, ${playerName}! Agora responda ao Teste Escolar desta matéria para ganhar moedas, XP e +3 Caças na grama alta:`,
+              quiz: {
+                id: q.id,
+                question: q.question,
+                options: q.options as string[],
+                correctIndex: q.correctIndex,
+                explanation: q.explanation,
+              },
+              hasAnswered: false,
+              rewardClaimed: false,
+            });
+            return;
+          }
+          setActiveDialog({
+            speaker: item.name,
+            role: activeInterior.buildingName,
+            avatarSprite: "sign",
+            text: item.actionText || `Você examinou: ${item.name}!`,
+          });
+          return;
+        }
       } else if (activeInterior.buildingId === "math_academy") {
         const item = getMathAcademyInteractable(targetX, targetY) || getMathAcademyInteractable(p.gridX, p.gridY);
         if (item) {
@@ -3138,6 +3680,13 @@ export default function RpgPage() {
             return;
           }
           if (item.type === "leader_pythagoras") {
+            const mathLesson = getSchoolLesson("math", currentYear);
+            if (!completedSchoolChaptersRef.current.includes(mathLesson.chapterId)) {
+              playSfx("open");
+              setActiveSchoolLesson(mathLesson);
+              setIsSchoolModalOpen(true);
+              return;
+            }
             setActiveGymId("math");
             setIsGymModalOpen(true);
             playSfx("open");
@@ -3148,7 +3697,7 @@ export default function RpgPage() {
               speaker: "Tales (Estudante de Geometria) 📐",
               role: "Academia de Matemática",
               avatarSprite: "villager",
-              text: "Olá Bianca! Mestre Pitágoras ensina que os números governam o universo! Multiplicação e frações são como superpoderes em batalha!",
+              text: `Olá ${playerName}! Mestre Pitágoras ensina que os números governam o universo! Multiplicação e frações são como superpoderes em batalha!`,
             });
             return;
           }
@@ -3177,6 +3726,13 @@ export default function RpgPage() {
             return;
           }
           if (item.type === "leader_sofia") {
+            const ptLesson = getSchoolLesson("portuguese", currentYear);
+            if (!completedSchoolChaptersRef.current.includes(ptLesson.chapterId)) {
+              playSfx("open");
+              setActiveSchoolLesson(ptLesson);
+              setIsSchoolModalOpen(true);
+              return;
+            }
             setActiveGymId("portuguese");
             setIsGymModalOpen(true);
             playSfx("open");
@@ -3216,6 +3772,13 @@ export default function RpgPage() {
             return;
           }
           if (item.type === "leader_oliver") {
+            const enLesson = getSchoolLesson("english", currentYear);
+            if (!completedSchoolChaptersRef.current.includes(enLesson.chapterId)) {
+              playSfx("open");
+              setActiveSchoolLesson(enLesson);
+              setIsSchoolModalOpen(true);
+              return;
+            }
             setActiveGymId("english");
             setIsGymModalOpen(true);
             playSfx("open");
@@ -3259,7 +3822,7 @@ export default function RpgPage() {
               speaker: "Professor Carvalho 🔬",
               role: "Pesquisador Pokémon",
               avatarSprite: "prof",
-              text: item.dialogText || "Olá Bianca! Continue se dedicando aos estudos escolares e aos seus Pokémon!",
+              text: item.dialogText || `Olá ${playerName}! Continue se dedicando aos estudos escolares e aos seus Pokémon!`,
             });
             return;
           }
@@ -3361,12 +3924,12 @@ export default function RpgPage() {
             if (explorerSkills.smash && item.id) {
               playSfx("fanfare");
               setBrokenCaveRocks((prev) => ({ ...prev, [item.id as string]: true }));
-              setCoins((prev) => prev + 50);
+              setCoins((prev) => prev + 10);
               setActiveDialog({
                 speaker: "Quebra-Rochas! 💥",
                 role: "Exploração",
                 avatarSprite: "sign",
-                text: "CRASH! Você quebrou a rocha rachada e encontrou 50 PokéMoedas e minerais brilhantes!",
+                text: "CRASH! Você quebrou a rocha rachada e encontrou 10 PokéMoedas e minerais brilhantes!",
               });
             } else {
               setActiveDialog({
@@ -3426,12 +3989,12 @@ export default function RpgPage() {
             if (item.id && !openedForestChests[item.id]) {
               playSfx("fanfare");
               setOpenedForestChests((prev) => ({ ...prev, [item.id as string]: true }));
-              setCoins((prev) => prev + 250);
+              setCoins((prev) => prev + 25);
               setActiveDialog({
                 speaker: "Baú Dourado Secreto! 🎁",
                 role: "Tesouro da Floresta",
                 avatarSprite: "sign",
-                text: "Você abriu o baú secreto e recebeu 250 PokéMoedas e uma Pedra da Folha Rara!",
+                text: "Você abriu o baú secreto e recebeu 25 PokéMoedas e uma Pedra da Folha Rara!",
               });
             } else {
               setActiveDialog({
@@ -3510,8 +4073,8 @@ export default function RpgPage() {
         avatarSprite: "sign",
         text: "A correnteza é forte! Vença a Dra. Clara no Ginásio de Ciências em Cerulean City para aprender a habilidade Nadar (Surf) e navegar na água!",
       });
-      
-      
+
+
       return;
     }
 
@@ -3553,7 +4116,26 @@ export default function RpgPage() {
         palavra: "portuguese",
         oliver: "english",
       };
-      setActiveGymId(gymMap[targetGymLeader.id]);
+      const gymKey = gymMap[targetGymLeader.id];
+      const requiredLesson = getSchoolLesson(gymKey, currentYear);
+      if (!completedSchoolChaptersRef.current.includes(requiredLesson.chapterId)) {
+        playSfx("pop");
+        setActiveDialog({
+          speaker: `${targetGymLeader.name} 🎓`,
+          role: "Pré-requisito Escolar Obrigatório",
+          avatarSprite: targetGymLeader.sprite,
+          text: `Olá, ${playerName}! Antes de realizar o Teste Oficial do Ginásio de ${requiredLesson.subjectName}, você precisa assistir à Apresentação Lúdica do Capítulo na 🏫 Escola da Cidade! Quer abrir a apresentação interativa agora?`,
+          actionButton: {
+            label: "Assistir Aula do Capítulo 📖",
+            onClick: () => {
+              setActiveSchoolLesson(requiredLesson);
+              setIsSchoolModalOpen(true);
+            },
+          },
+        });
+        return;
+      }
+      setActiveGymId(gymKey);
       setIsGymModalOpen(true);
       playSfx("open");
       return;
@@ -3716,6 +4298,10 @@ export default function RpgPage() {
     stolenPokemonList.length,
     pokemonList.length,
     playerName,
+    activeInterior,
+    handleExitInterior,
+    enterWalkableInterior,
+    getBuildingFromDoor,
   ]);
 
   // Handle Quiz answer in Dialog
@@ -3730,20 +4316,26 @@ export default function RpgPage() {
         spread: 70,
         origin: { y: 0.7 },
       });
-      setCoins((prev) => prev + 15);
+      setCoins((prev) => prev + 5);
       setXp((prev) => prev + 25);
       if (activeDialog.quiz.id) {
         markQuestionAnswered(activeDialog.quiz.id);
+      } else {
+        setWildHuntQuota((q) => {
+          const next = q + 3;
+          wildHuntQuotaRef.current = next;
+          return next;
+        });
       }
       setActiveDialog((prev) =>
         prev
           ? {
-              ...prev,
-              hasAnswered: true,
-              isCorrect: true,
-              rewardClaimed: true,
-              text: activeDialog.quiz!.explanation + " 🎉 Você ganhou +15 Moedas e +25 XP!",
-            }
+            ...prev,
+            hasAnswered: true,
+            isCorrect: true,
+            rewardClaimed: true,
+            text: activeDialog.quiz!.explanation + " 🎉 Você ganhou +5 Moedas, +25 XP e +3 Caças na grama alta!",
+          }
           : null
       );
     } else {
@@ -3751,11 +4343,11 @@ export default function RpgPage() {
       setActiveDialog((prev) =>
         prev
           ? {
-              ...prev,
-              hasAnswered: true,
-              isCorrect: false,
-              text: "Quase lá! Resposta incorreta, mas não desista! Fale comigo novamente para responder certo!",
-            }
+            ...prev,
+            hasAnswered: true,
+            isCorrect: false,
+            text: "Quase lá! Resposta incorreta, mas não desista! Fale comigo novamente para responder certo!",
+          }
           : null
       );
     }
@@ -3790,6 +4382,12 @@ export default function RpgPage() {
       // Phone shortcut (KeyP)
       if (e.code === "KeyP") {
         openPhoneIfAllowed();
+      }
+
+      // Start Menu shortcut (KeyM, Escape)
+      if (e.code === "KeyM" || e.code === "Escape") {
+        setIsStartMenuOpen((prev) => !prev);
+        playSfx("open");
       }
 
       // Running toggle (Shift or KeyX)
@@ -3877,8 +4475,8 @@ export default function RpgPage() {
           // INTERIOR TRIGGERS (Walkable Real Mini-Maps)
           if (activeInterior) {
             if (activeInterior.buildingId === "family_house") {
-              // 1. Walked off door mat onto exit threshold (x: 3..4, y: 8)
-              if (activeInterior.floor === 1 && (p.gridX === 3 || p.gridX === 4) && p.gridY >= 8) {
+              // 1. Walked off door mat onto exit threshold (x: 2..5, y: 8)
+              if (activeInterior.floor === 1 && (p.gridX >= 2 && p.gridX <= 5) && p.gridY >= 8) {
                 if (pokemonList.length === 0) {
                   p.gridY = 7;
                   p.drawY = 7;
@@ -3898,14 +4496,16 @@ export default function RpgPage() {
                 handleExitInterior();
                 return;
               }
-              // 2. Stairs up to Floor 2 (x: 9..10, y: 1)
+              // 2. Stairs up to Floor 2 (x: 8..10, y: 1)
               if (activeInterior.floor === 1 && (p.gridX >= 8 && p.gridX <= 10) && p.gridY === 1) {
                 targetMoveTile.current = null;
+                touchDirection.current = null;
+                keysDown.current = {};
                 playSfx("open");
                 setActiveInterior((prev) => (prev ? { ...prev, floor: 2 } : null));
-                p.gridX = 7;
+                p.gridX = 6;
                 p.gridY = 2;
-                p.drawX = 7;
+                p.drawX = 6;
                 p.drawY = 2;
                 p.direction = "down";
                 p.isMoving = false;
@@ -3914,15 +4514,17 @@ export default function RpgPage() {
                 setVictoryNotice("Subiu para o 2º Andar: Quarto das Meninas 🛏️");
                 return;
               }
-              // 3. Stairs down to Floor 1 (x: 7..8, y: 1)
-              if (activeInterior.floor === 2 && (p.gridX === 7 || p.gridX === 8) && p.gridY === 1) {
+              // 3. Stairs down to Floor 1 (x: 7..9, y: 1..2)
+              if (activeInterior.floor === 2 && (p.gridX >= 7 && p.gridX <= 9) && (p.gridY === 1 || p.gridY === 2)) {
                 targetMoveTile.current = null;
+                touchDirection.current = null;
+                keysDown.current = {};
                 playSfx("open");
                 setActiveInterior((prev) => (prev ? { ...prev, floor: 1 } : null));
-                p.gridX = 9;
-                p.gridY = 2;
-                p.drawX = 9;
-                p.drawY = 2;
+                p.gridX = 8;
+                p.gridY = 3;
+                p.drawX = 8;
+                p.drawY = 3;
                 p.direction = "down";
                 p.isMoving = false;
                 p.moveProgress = 0;
@@ -3939,6 +4541,12 @@ export default function RpgPage() {
                     setIsStarterModalOpen(true);
                   }, 400);
                 }
+                return;
+              }
+            } else if (activeInterior.buildingId.startsWith("city_school:")) {
+              // Walked out of Escola da Cidade door mat (6..7, 9)
+              if ((p.gridX === 6 || p.gridX === 7) && p.gridY >= 9) {
+                handleExitInterior();
                 return;
               }
             } else if (activeInterior.buildingId === "rival_house") {
@@ -4046,11 +4654,11 @@ export default function RpgPage() {
                 if (tallGrassSteps.current >= 4 && Math.random() < 0.28) {
                   tallGrassSteps.current = 0;
                   triggerWildEncounter(isWaterTile, zone.generation);
-                } else if (Math.random() < 0.08) {
+                } else if (Math.random() < 0.03) {
                   playSfx("star");
-                  setCoins((c) => c + 5);
-                  setXp((x) => x + 10);
-                  confetti({ particleCount: 20, spread: 45, origin: { y: 0.6 } });
+                  setCoins((c) => c + 2);
+                  setXp((x) => x + 8);
+                  confetti({ particleCount: 15, spread: 40, origin: { y: 0.6 } });
                 }
               }
             }
@@ -4096,9 +4704,12 @@ export default function RpgPage() {
         !activeBuilding &&
         !isEvolutionModalOpen &&
         !isRivalModalOpen &&
-        !isTradeModalOpen
+        !isTradeModalOpen &&
+        !isStarterModalOpen &&
+        !isSchoolModalOpen
       ) {
         let requestedDir: Direction | null = null;
+        let secondaryDir: Direction | null = null;
 
         if (touchDirection.current) {
           requestedDir = touchDirection.current;
@@ -4116,8 +4727,10 @@ export default function RpgPage() {
           if (Math.abs(dx) > 0 || Math.abs(dy) > 0) {
             if (Math.abs(dx) > Math.abs(dy)) {
               requestedDir = dx > 0 ? "right" : "left";
+              if (dy !== 0) secondaryDir = dy > 0 ? "down" : "up";
             } else {
               requestedDir = dy > 0 ? "down" : "up";
+              if (dx !== 0) secondaryDir = dx > 0 ? "right" : "left";
             }
           } else {
             targetMoveTile.current = null;
@@ -4134,7 +4747,77 @@ export default function RpgPage() {
           if (requestedDir === "left") nextGridX -= 1;
           if (requestedDir === "right") nextGridX += 1;
 
+          // If primary axis is blocked during tap-to-move, try secondary axis automatically
+          if (!isTileWalkable(nextGridX, nextGridY) && secondaryDir) {
+            let altX = p.gridX;
+            let altY = p.gridY;
+            if (secondaryDir === "up") altY -= 1;
+            if (secondaryDir === "down") altY += 1;
+            if (secondaryDir === "left") altX -= 1;
+            if (secondaryDir === "right") altX += 1;
+            if (isTileWalkable(altX, altY)) {
+              p.direction = secondaryDir;
+              nextGridX = altX;
+              nextGridY = altY;
+            }
+          }
+
           if (!activeInterior) {
+            // Pedagogical Route Progression Lock: Advanced Routes & Cities require Chapter Study
+            const targetZone = getZoneFromCoords(nextGridX, nextGridY);
+            const chaptersDone = completedSchoolChaptersRef.current.length;
+            const questionsDone = answeredQuestionIdsRef.current.length;
+            const isAdvancedTier1 =
+              targetZone.name.includes("Cerulean") ||
+              targetZone.name.includes("Monte da Lua") ||
+              targetZone.name.includes("Rota 3") ||
+              targetZone.name.includes("Rota 4");
+            const isAdvancedTier2 =
+              targetZone.name.includes("Celadon") ||
+              targetZone.name.includes("Saffron") ||
+              targetZone.name.includes("Vermilion") ||
+              targetZone.name.includes("Fuchsia") ||
+              targetZone.name.includes("Cinnabar");
+            const isAdvancedTier3 =
+              targetZone.name.includes("Indigo Plateau") || targetZone.name.includes("Victory Road");
+
+            if (isAdvancedTier1 && chaptersDone < 1 && questionsDone < 2) {
+              targetMoveTile.current = null;
+              playSfx("pop");
+              setActiveDialog({
+                speaker: "Trava Pedagógica de Rota 🏫",
+                role: "Estudo Obrigatório antes de Avançar",
+                avatarSprite: "prof",
+                text: `Alto lá, ${playerName}! Para avançar rumo a ${targetZone.name}, você precisa primeiro concluir pelo menos 1 Capítulo na 🏫 Escola da Cidade (em Viridian ou Pewter) ou acertar 2 desafios escolares!`,
+              });
+              setVictoryNotice("📚 Conclua 1 Capítulo na Escola da Cidade para desbloquear esta rota!");
+              return;
+            }
+            if (isAdvancedTier2 && chaptersDone < 2 && questionsDone < 4) {
+              targetMoveTile.current = null;
+              playSfx("pop");
+              setActiveDialog({
+                speaker: "Trava Pedagógica de Rota 🏫",
+                role: "Progresso nos Capítulos",
+                avatarSprite: "prof",
+                text: `Atenção, ${playerName}! A região de ${targetZone.name} exige pelo menos 2 Capítulos concluídos nas Escolas das Cidades (ou 4 desafios pedagógicos vencidos)! Consulte o Mapa no 📱 PokéCelular!`,
+              });
+              setVictoryNotice("📚 Avance nos Capítulos das Escolas para explorar esta metrópole!");
+              return;
+            }
+            if (isAdvancedTier3 && chaptersDone < 3 && questionsDone < 6) {
+              targetMoveTile.current = null;
+              playSfx("pop");
+              setActiveDialog({
+                speaker: "Guardião da Liga Pokémon 👑",
+                role: "Exigência Acadêmica da Cúpula",
+                avatarSprite: "prof",
+                text: `Para subir ao ${targetZone.name}, você precisa dominar pelo menos 3 Capítulos nas Escolas das Cidades! Volte às cidades e estude com os Professores!`,
+              });
+              setVictoryNotice("👑 Domine 3 Capítulos nas Escolas antes de subir ao Indigo Plateau!");
+              return;
+            }
+
             // Check if entering a route blocked by Father's order:
             if (nextGridX === 11 && nextGridY === 11) {
               if (!checkRouteAllowedByFather("matematica")) {
@@ -4217,13 +4900,30 @@ export default function RpgPage() {
     isMarketOpen,
     isRescueOpen,
     activeWildEncounter,
+    activeInterior,
+    pokemonList.length,
+    isStarterModalOpen,
+    isSchoolModalOpen,
+    isPokedexOpen,
+    isCustomizationOpen,
+    isGymModalOpen,
+    activeBuilding,
+    isEvolutionModalOpen,
+    isRivalModalOpen,
+    isTradeModalOpen,
     currentZone,
+    playerName,
     isTileWalkable,
     playSfx,
     activeNpcs,
     triggerRocketBattle,
     checkRouteAllowedByFather,
     triggerWildEncounter,
+    triggerCaveWildEncounter,
+    triggerForestWildEncounter,
+    handleExitInterior,
+    enterWalkableInterior,
+    getBuildingFromDoor,
   ]);
 
   // Canvas Drawing Routine (FireRed 16-bit Pixel Precision with authentic zoom)
@@ -4379,6 +5079,18 @@ export default function RpgPage() {
           null,
           fireredTilesheets.current["plateau_inside"]
         );
+      } else if (activeInterior.buildingId.startsWith("city_school:")) {
+        const subjectKey = (activeInterior.buildingId.split(":")[1] || "math") as SchoolSubjectKey;
+        const lesson = getSchoolLesson(subjectKey, currentYear);
+        drawCitySchoolInterior(
+          ctx,
+          TILE_SIZE,
+          activeInterior.buildingName,
+          lesson.subjectColor,
+          completedSchoolChaptersRef.current.includes(lesson.chapterId),
+          waterTick.current,
+          fireredCharacters.current["prof"]
+        );
       }
 
       // Pass 2: Strict Depth Y-Sorting for Interior Characters
@@ -4399,10 +5111,14 @@ export default function RpgPage() {
         },
       });
 
-      // Sister in multiplayer
-      if (otherPlayerSync) {
+      // Sister in multiplayer (only render inside interior if she is in the exact same building & floor)
+      if (
+        otherPlayerSync &&
+        otherPlayerSync.interiorId === activeInterior.buildingId &&
+        (otherPlayerSync.interiorFloor || 1) === activeInterior.floor
+      ) {
         interiorEntities.push({
-          baselineY: otherPlayerSync.y * TILE_SIZE + TILE_SIZE,
+          baselineY: (otherPlayerSync.drawY ?? otherPlayerSync.y) * TILE_SIZE + TILE_SIZE,
           render: () => drawSisterPlayer(ctx, otherPlayerSync),
         });
       }
@@ -4514,6 +5230,14 @@ export default function RpgPage() {
           interiorEntities.push({
             baselineY: 4 * TILE_SIZE + TILE_SIZE,
             render: () => ctx.drawImage(champSprite, 0, 0, 32, 32, 6 * TILE_SIZE + 4, 4 * TILE_SIZE - 2, TILE_SIZE - 8, TILE_SIZE),
+          });
+        }
+      } else if (activeInterior.buildingId.startsWith("city_school:")) {
+        const profSprite = fireredCharacters.current["prof"] || fireredCharacters.current["parent"];
+        if (profSprite && profSprite.complete && profSprite.naturalWidth > 0) {
+          interiorEntities.push({
+            baselineY: 2 * TILE_SIZE + TILE_SIZE,
+            render: () => ctx.drawImage(profSprite, 0, 0, 32, 32, 6 * TILE_SIZE + 4, 2 * TILE_SIZE - 2, TILE_SIZE - 8, TILE_SIZE),
           });
         }
       } else if (activeInterior.buildingId === "fossil_cave") {
@@ -4710,10 +5434,10 @@ export default function RpgPage() {
       });
     });
 
-    // F. Sister Player (multiplayer)
-    if (otherPlayerSync) {
+    // F. Sister Player (multiplayer in Overworld)
+    if (otherPlayerSync && !otherPlayerSync.interiorId) {
       depthEntities.push({
-        baselineY: (otherPlayerSync.y + 1) * TILE_SIZE,
+        baselineY: ((otherPlayerSync.drawY ?? otherPlayerSync.y) + 1) * TILE_SIZE,
         render: () => drawSisterPlayer(ctx, otherPlayerSync),
       });
     }
@@ -4738,6 +5462,52 @@ export default function RpgPage() {
 
     // 5. Draw Floating "🎯 Foco da Semana" 3D Holographic Badge
     drawFocoDaSemanaBadge(ctx);
+
+    // 5.5. Draw Active GPS Route Golden Directional Trail on Overworld Ground
+    if (activeGpsRoute && !activeInterior) {
+      const startX = (p.drawX + 0.5) * TILE_SIZE;
+      const startY = (p.drawY + 0.5) * TILE_SIZE;
+      const endX = (activeGpsRoute.targetX + 0.5) * TILE_SIZE;
+      const endY = (activeGpsRoute.targetY + 0.5) * TILE_SIZE;
+      const dx = endX - startX;
+      const dy = endY - startY;
+      const dist = Math.hypot(dx, dy);
+
+      if (dist < TILE_SIZE * 2.5) {
+        // Reached destination!
+        setActiveGpsRoute(null);
+      } else {
+        const angle = Math.atan2(dy, dx);
+        const pulse = (Date.now() % 1200) / 1200;
+        ctx.save();
+        // Draw 5 glowing golden chevrons guiding the player forward
+        for (let step = 1; step <= 5; step++) {
+          const offsetDist = (step * 28 + pulse * 28) % Math.min(dist - 12, 160);
+          const cx = startX + Math.cos(angle) * offsetDist;
+          const cy = startY + Math.sin(angle) * offsetDist;
+          ctx.save();
+          ctx.translate(cx, cy);
+          ctx.rotate(angle);
+          ctx.fillStyle = "rgba(251, 191, 36, 0.9)";
+          ctx.shadowColor = "rgba(245, 158, 11, 0.95)";
+          ctx.shadowBlur = 8;
+          ctx.beginPath();
+          ctx.moveTo(8, 0);
+          ctx.lineTo(-5, -6);
+          ctx.lineTo(-2, 0);
+          ctx.lineTo(-5, 6);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        }
+        // Destination pulsing beacon
+        ctx.fillStyle = "rgba(251, 191, 36, 0.85)";
+        ctx.beginPath();
+        ctx.arc(endX, endY, 10 + Math.sin(Date.now() / 200) * 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
 
     // 6. Draw Ambient Atmosphere Particles (Falling Leaves, Flower Petals, Sun Sparkles)
     drawAmbientParticles(ctx, camX, camY, viewWidth, viewHeight);
@@ -4828,7 +5598,7 @@ export default function RpgPage() {
     name: b.name,
   }));
 
-    const drawGroundTile = (
+  const drawGroundTile = (
     ctx: CanvasRenderingContext2D,
     type: string,
     x: number,
@@ -5077,10 +5847,31 @@ export default function RpgPage() {
     }
   };
 
-  // Sister Player Rendering for Live Multiplayer Synchronization between Tablets
+  // Sister Player Rendering for Live Multiplayer Synchronization between Tablets (Smooth 60 FPS Interpolation)
   const drawSisterPlayer = (ctx: CanvasRenderingContext2D, s: SisterSyncState) => {
-    const sx = Math.floor(s.x * TILE_SIZE);
-    const sy = Math.floor(s.y * TILE_SIZE);
+    const targetX = typeof s.drawX === "number" ? s.drawX : s.x;
+    const targetY = typeof s.drawY === "number" ? s.drawY : s.y;
+    const sr = sisterRenderRef.current;
+
+    // Teleport immediately if distance > 4 tiles (e.g. room transition or initial spawn), otherwise smooth lerp
+    const jumpDist = Math.hypot(targetX - sr.drawX, targetY - sr.drawY);
+    if (jumpDist > 4) {
+      sr.drawX = targetX;
+      sr.drawY = targetY;
+    } else {
+      sr.drawX += (targetX - sr.drawX) * 0.28;
+      sr.drawY += (targetY - sr.drawY) * 0.28;
+    }
+
+    const isVisuallyMoving = s.isMoving || jumpDist > 0.04;
+    if (isVisuallyMoving) {
+      sr.walkFrame = (sr.walkFrame + 0.18) % 4;
+    } else {
+      sr.walkFrame = 0;
+    }
+
+    const sx = Math.floor(sr.drawX * TILE_SIZE);
+    const sy = Math.floor(sr.drawY * TILE_SIZE);
 
     const isCecilia = s.sisterName === "Cecília";
     const charKey = isCecilia ? "cecilia" : "bianca";
@@ -5109,7 +5900,7 @@ export default function RpgPage() {
       const fh = charImg.height / 4;
       const rowMap: Record<Direction, number> = { down: 0, left: 1, right: 2, up: 3 };
       const row = rowMap[s.facing] ?? 0;
-      const frame = s.isMoving ? Math.floor(waterTick.current * 4) % 4 : 0;
+      const frame = isVisuallyMoving ? Math.floor(sr.walkFrame) % 4 : 0;
 
       ctx.drawImage(
         charImg,
@@ -5122,34 +5913,59 @@ export default function RpgPage() {
         34,
         44
       );
+
+      // Sister Hat Customization Overlay
+      if (s.customization?.hatId === "red_cap") {
+        ctx.fillStyle = "#dc2626";
+        ctx.fillRect(sx + 10, sy + 5, 14, 4);
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(sx + 14, sy + 6, 4, 2);
+      } else if (s.customization?.hatId === "pink_bow") {
+        ctx.fillStyle = "#f43f5e";
+        ctx.beginPath();
+        ctx.arc(sx + 24, sy + 7, 4, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (s.customization?.hatId === "straw_hat") {
+        ctx.fillStyle = "#eab308";
+        ctx.beginPath();
+        ctx.ellipse(sx + 17, sy + 6, 13, 4, 0, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (s.customization?.hatId === "trainer_band") {
+        ctx.fillStyle = "#dc2626";
+        ctx.fillRect(sx + 9, sy + 8, 16, 3);
+      }
     }
 
-    // Floating online badge with green pulse dot
+    // Floating online badge with green pulse dot & active Pokémon
     const tagBob = Math.sin(waterTick.current * 4) * 2;
-    ctx.fillStyle = "rgba(15, 23, 42, 0.9)";
+    const badgeLabel = s.activePokemonName ? `${s.sisterName} • ${s.activePokemonName}` : `${s.sisterName} (Ao Vivo)`;
+    const badgeWidth = Math.max(72, badgeLabel.length * 5.6 + 18);
+    const badgeX = sx + 20 - badgeWidth / 2;
+
+    ctx.fillStyle = "rgba(15, 23, 42, 0.92)";
     ctx.beginPath();
-    ctx.roundRect(sx - 12, sy - 28 + tagBob, 64, 17, 6);
+    ctx.roundRect(badgeX, sy - 28 + tagBob, badgeWidth, 18, 6);
     ctx.fill();
-    ctx.strokeStyle = "#38bdf8";
+    ctx.strokeStyle = "#22c55e";
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
     // Online green pulse dot
     ctx.fillStyle = "#22c55e";
     ctx.beginPath();
-    ctx.arc(sx - 4, sy - 19 + tagBob, 3, 0, Math.PI * 2);
+    ctx.arc(badgeX + 8, sy - 19 + tagBob, 3.2, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.fillStyle = "#ffffff";
     ctx.font = "bold 9px sans-serif";
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
-    ctx.fillText(s.sisterName, sx + 3, sy - 19 + tagBob);
+    ctx.fillText(badgeLabel, badgeX + 15, sy - 19 + tagBob);
 
     // If close to player, show interactive prompt
     const p = playerRef.current;
-    const dist = Math.hypot(p.drawX - s.x, p.drawY - s.y);
-    if (dist <= 1.5) {
+    const dist = Math.hypot(p.drawX - sr.drawX, p.drawY - sr.drawY);
+    if (dist <= 1.8) {
       ctx.fillStyle = "#f59e0b";
       ctx.beginPath();
       ctx.roundRect(sx - 24, sy - 48 + tagBob, 88, 16, 6);
@@ -5214,6 +6030,24 @@ export default function RpgPage() {
     } else {
       ctx.fillStyle = npc.isRocket ? "#0f172a" : "#3b82f6";
       ctx.fillRect(nx + 12, ny + 12, 16, 24);
+    }
+
+    // 👭 Sister Co-Player Name Tag above NPC on Map
+    if (npc.id === "sister") {
+      const tagBob = Math.sin(waterTick.current * 4) * 2;
+      ctx.fillStyle = "rgba(15, 23, 42, 0.92)";
+      ctx.beginPath();
+      ctx.roundRect(nx - 12, ny - 26 + tagBob, 64, 16, 6);
+      ctx.fill();
+      ctx.strokeStyle = "#f472b6";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      ctx.fillStyle = "#fbcfe8";
+      ctx.font = "900 9.5px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(`👭 ${sisterName}`, nx + 20, ny - 18 + tagBob);
     }
 
     // ⚡ Rival Visual Prompt
@@ -5359,6 +6193,8 @@ export default function RpgPage() {
       isTradeModalOpen ||
       isExamModalOpen ||
       isCloudSettingsOpen ||
+      isStarterModalOpen ||
+      isSchoolModalOpen ||
       showHelp ||
       Date.now() < doorCooldownRef.current
     ) {
@@ -5419,6 +6255,9 @@ export default function RpgPage() {
       } else if (activeInterior.buildingId === "indigo_plateau") {
         maxCols = INDIGO_PLATEAU_COLS;
         maxRows = INDIGO_PLATEAU_ROWS;
+      } else if (activeInterior.buildingId.startsWith("city_school:")) {
+        maxCols = SCHOOL_COLS;
+        maxRows = SCHOOL_ROWS;
       }
       if (worldX >= 0 && worldX < maxCols && worldY >= 0 && worldY < maxRows) {
         targetMoveTile.current = { x: worldX, y: worldY };
@@ -5492,787 +6331,504 @@ export default function RpgPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans select-none">
-      {/* Top Retro Navigation Header */}
-      <header className="bg-slate-900 border-b border-slate-800 px-4 py-3 flex flex-wrap items-center justify-between gap-3 shadow-md sticky top-0 z-30">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => {
-              playSfx("click");
-              setActiveProfileId(null);
-            }}
-            className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 px-3 py-1.5 rounded-xl border border-slate-700 text-xs font-bold transition shadow cursor-pointer"
-            title="Trocar de Treinadora (Cecília / Bianca)"
-          >
-            <ArrowLeft className="w-4 h-4 text-amber-400" />
-            <span>Trocar Treinadora</span>
-          </button>
+    <div className="fixed inset-0 w-screen h-screen overflow-hidden bg-slate-950 text-slate-100 flex items-center justify-center font-sans select-none">
+      {/* 100% Fullscreen Handheld Console Game Viewport */}
+      <div className="relative w-full h-full bg-slate-950 flex items-center justify-center overflow-hidden">
+        {/* Interactive Game Canvas (Fills entire screen ergonomically) */}
+        <canvas
+          ref={canvasRef}
+          width={760}
+          height={480}
+          onClick={handleCanvasClick}
+          className="modern-hd-canvas w-full h-full object-contain cursor-pointer touch-none"
+        />
 
-          <div className="flex items-center gap-2">
-            <span className="bg-red-600 text-white font-black text-[11px] px-2.5 py-0.5 rounded-full tracking-wider shadow-md border border-red-400">
-              GBA 16-BIT
-            </span>
-            <h1 className="font-black text-sm md:text-base text-amber-400 tracking-wide flex items-center gap-1.5">
-              <span>VILA DO SABER</span>
-              <span className="text-red-400 font-bold text-xs hidden sm:inline">| Pokémon FireRed Edition</span>
-            </h1>
-          </div>
-        </div>
-
-        {/* Active Player Profile Badge & Cloud Sync Indicator */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Active Player Profile Pill */}
+        {/* TOP-LEFT MINIMAL HUD OVERLAY (Semi-transparent, zero height impact) */}
+        <div className="absolute top-2.5 left-2.5 z-20 flex items-center gap-1.5 flex-wrap pointer-events-auto">
+          {/* Active Trainer Pill */}
           <div
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-black shadow-inner ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-2xl border text-[11px] font-black backdrop-blur-md shadow-lg ${
               isPlayerCecilia
-                ? "bg-amber-950/70 border-amber-500/50 text-amber-300"
-                : "bg-emerald-950/70 border-emerald-500/50 text-emerald-300"
+                ? "bg-amber-950/80 border-amber-500/70 text-amber-300"
+                : "bg-emerald-950/80 border-emerald-500/70 text-emerald-300"
             }`}
           >
             <span>{isPlayerCecilia ? "⚡" : "🦊"}</span>
-            <span>{playerName} ({currentYear}º Ano)</span>
+            <span>{playerName}</span>
+            <span className="text-[9px] opacity-75">({currentYear}º)</span>
           </div>
 
-          {/* Cloud Sync Status Indicator & Manual Save Button */}
-          <button
-            onClick={() => performCloudSave(true)}
-            disabled={cloudSyncStatus.isSaving}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-bold transition active:scale-95 cursor-pointer shadow-md ${
-              cloudSyncStatus.isSaving
-                ? "bg-blue-600/30 border-blue-400 text-blue-300 animate-pulse"
-                : cloudSyncStatus.isOnline
-                ? "bg-emerald-900/40 border-emerald-500/50 text-emerald-300 hover:bg-emerald-800/50"
-                : "bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700"
-            }`}
-            title="Clique para Salvar o progresso agora"
-          >
-            {cloudSyncStatus.isSaving ? (
-              <RefreshCw className="w-3.5 h-3.5 animate-spin text-blue-300" />
-            ) : cloudSyncStatus.isOnline ? (
-              <Cloud className="w-3.5 h-3.5 text-emerald-400" />
-            ) : (
-              <Database className="w-3.5 h-3.5 text-amber-400" />
-            )}
-            <span className="hidden md:inline">
-              {cloudSyncStatus.isSaving
-                ? "Salvando..."
-                : cloudSyncStatus.isOnline
-                ? `Nuvem OK${cloudSyncStatus.lastSavedAt ? ` (${cloudSyncStatus.lastSavedAt})` : ""}`
-                : "Salvo Local"}
-            </span>
-          </button>
+          {/* Coins Badge */}
+          <div className="flex items-center gap-1 bg-amber-950/80 backdrop-blur-md border border-amber-500/60 px-2 py-1 rounded-2xl text-amber-300 font-black text-[11px] shadow">
+            <Coins className="w-3 h-3 text-amber-400" />
+            <span>{coins}</span>
+          </div>
 
-          {/* Cloud & PIN Settings */}
-          <button
-            onClick={() => {
-              setIsCloudSettingsOpen(true);
-              playSfx("open");
-            }}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-bold transition active:scale-95 cursor-pointer shadow-sm"
-            title="Configurações de Nuvem & Senha"
-          >
-            <Settings className="w-3.5 h-3.5" />
-            <span className="hidden lg:inline">Nuvem & PIN</span>
-          </button>
+          {/* Hunt Quota Badge */}
+          <div className="hidden sm:flex items-center gap-1 bg-emerald-950/80 backdrop-blur-md border border-emerald-500/60 px-2 py-1 rounded-2xl text-emerald-300 font-bold text-[11px] shadow">
+            <span>🌿</span>
+            <span>{wildHuntQuota} Caças</span>
+          </div>
 
-          {/* Logout / Switch Profile Button */}
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-red-950/80 hover:bg-red-900 border border-red-500/40 text-red-300 hover:text-white text-xs font-bold transition active:scale-95 cursor-pointer shadow-sm"
-            title="Sair e trocar de perfil de Treinadora"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Trocar Perfil</span>
-          </button>
+          {/* Live Sister Radar Pill (If online) */}
+          {otherPlayerSync && (
+            <button
+              type="button"
+              onClick={() => {
+                playSfx("open");
+                setIsTradeModalOpen(true);
+              }}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-2xl bg-emerald-950/85 backdrop-blur-md border border-emerald-400 text-emerald-200 text-[11px] font-black shadow-lg animate-pulse cursor-pointer transition active:scale-95"
+              title={`${sisterName} está jogando ao vivo! Toque para Troca.`}
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+              <span>👭 {sisterName} Ao Vivo</span>
+            </button>
+          )}
+
+          {/* Cloud Saving Indicator */}
+          {cloudSyncStatus.isSaving && (
+            <div className="flex items-center gap-1 px-2 py-1 rounded-2xl bg-blue-950/80 backdrop-blur-md border border-blue-400 text-blue-300 text-[10px] font-bold animate-pulse">
+              <RefreshCw className="w-3 h-3 animate-spin" />
+              <span>Salvando...</span>
+            </div>
+          )}
         </div>
 
-        {/* Header Badges & Actions */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Bolsa Trigger */}
-          <button
-            onClick={() => {
-              setIsBagOpen(true);
-              playSfx("open");
-            }}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-indigo-700 to-purple-700 hover:from-indigo-600 hover:to-purple-600 text-white rounded-xl border border-indigo-400 text-xs font-black shadow-md cursor-pointer transition active:scale-95"
-            title="Abrir Bolsa de Itens e Cuidados Pokémon"
-          >
-            <span>🎒</span>
-            <span className="hidden sm:inline">Bolsa</span>
-            <span className="text-[10px] bg-black/40 px-1.5 py-0.2 rounded-md font-bold">
-              {pokemonList.length}
-            </span>
-          </button>
+        {/* TOP-CENTER FLOATING NOTIFICATION & COMPACT TUTORIAL CHIP */}
+        <div className="absolute top-2.5 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-1.5 max-w-sm sm:max-w-md w-full px-2 pointer-events-auto">
+          {/* Victory Toast */}
+          {victoryNotice && (
+            <div className="w-full bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 text-white px-3 py-1.5 rounded-2xl border border-emerald-400 shadow-xl flex items-center justify-between text-xs font-black animate-bounce">
+              <div className="flex items-center gap-1.5 truncate">
+                <Trophy className="w-4 h-4 text-amber-300 shrink-0" />
+                <span className="truncate">{victoryNotice}</span>
+              </div>
+              <button
+                onClick={() => setVictoryNotice(null)}
+                className="text-emerald-100 hover:text-white text-[11px] bg-emerald-800/80 px-2 py-0.5 rounded-lg ml-2 shrink-0 cursor-pointer"
+              >
+                OK
+              </button>
+            </div>
+          )}
 
-          {/* Pokédex Trigger (151 Kanto Species) */}
-          <button
-            onClick={() => {
-              setIsPokedexOpen(true);
-              playSfx("open");
-            }}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-500 hover:to-rose-600 text-white rounded-xl border border-red-400 text-xs font-black shadow-md cursor-pointer transition active:scale-95"
-            title="Abrir Pokédex Oficial de Kanto (151 Pokémon)"
-          >
-            <span>🔴</span>
-            <span className="hidden sm:inline">Pokédex</span>
-            <span className="text-[10px] bg-black/40 px-1.5 py-0.2 rounded-md font-bold">
-              {pokemonList.length}/151
-            </span>
-          </button>
+          {/* Compact 1-Line Mission Tutorial (Minimizable so it never blocks the map) */}
+          {tutorialStep < 6 && (
+            <div className="w-full bg-slate-950/85 backdrop-blur-md border border-amber-400/80 rounded-2xl px-3 py-1 shadow-xl flex items-center justify-between gap-1.5 text-[11px]">
+              <div className="flex items-center gap-1.5 min-w-0 truncate">
+                <span className="text-[9px] font-black uppercase tracking-wider bg-amber-400 text-slate-950 px-1.5 py-0.5 rounded-md shrink-0">
+                  🎓 {tutorialStep}/5
+                </span>
+                <p className="font-bold text-white truncate">
+                  {tutorialStep === 1 && "Desça a escada e fale com o Papai para pegar o Inicial!"}
+                  {tutorialStep === 2 && "Toque no Celular e clique em 'Criar Rota no Mapa'!"}
+                  {tutorialStep === 3 && "Siga as setas douradas até a Escola da Cidade!"}
+                  {tutorialStep === 4 && "Responda à sua 1ª questão na Escola para liberar Caça!"}
+                  {tutorialStep === 5 && "Entre na Grama Alta fora da cidade e capture um Pokémon!"}
+                </p>
+              </div>
 
-          {/* Character Customization & Wardrobe Trigger */}
-          <button
-            onClick={() => {
-              setIsCustomizationOpen(true);
-              playSfx("open");
-            }}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white rounded-xl border border-pink-400 text-xs font-black shadow-md cursor-pointer transition active:scale-95"
-            title="Personalizar Personagem e Boutique de Roupas"
-          >
-            <span>✨</span>
-            <span className="hidden sm:inline">Visual</span>
-          </button>
+              <div className="flex items-center gap-1 shrink-0">
+                {tutorialStep === 2 && (
+                  <button
+                    onClick={() => openPhoneIfAllowed("map")}
+                    className="bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-[10px] px-2 py-0.5 rounded-lg shadow shrink-0 cursor-pointer"
+                  >
+                    🗺️ GPS
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
 
-          {/* Gym Badges Display */}
-          <div className="flex items-center gap-1 bg-slate-950/80 border border-slate-700 px-2 py-1 rounded-xl shadow-inner">
-            <span className="text-[9px] font-black text-amber-400 hidden lg:inline mr-0.5">
-              Insígnias:
-            </span>
-            <button
-              onClick={() => {
-                setActiveGymId("math");
-                setIsGymModalOpen(true);
-                playSfx("open");
-              }}
-              className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs transition cursor-pointer ${
-                gymBadges.math_boulder
-                  ? "bg-amber-500/30 border border-amber-400 text-amber-300 shadow-sm"
-                  : "bg-slate-800 border border-slate-700 opacity-40 hover:opacity-80"
-              }`}
-              title="Ginásio de Matemática (Pewter) - Insígnia dos Números 📐"
-            >
-              📐
-            </button>
-            <button
-              onClick={() => {
-                setActiveGymId("science");
-                setIsGymModalOpen(true);
-                playSfx("open");
-              }}
-              className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs transition cursor-pointer ${
-                gymBadges.science_cascade
-                  ? "bg-sky-500/30 border border-sky-400 text-sky-300 shadow-sm"
-                  : "bg-slate-800 border border-slate-700 opacity-40 hover:opacity-80"
-              }`}
-              title="Ginásio de Ciências (Cerulean) - Insígnia da Descoberta 🔬"
-            >
-              🔬
-            </button>
-            <button
-              onClick={() => {
-                setActiveGymId("portuguese");
-                setIsGymModalOpen(true);
-                playSfx("open");
-              }}
-              className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs transition cursor-pointer ${
-                gymBadges.portuguese_rainbow
-                  ? "bg-emerald-500/30 border border-emerald-400 text-emerald-300 shadow-sm"
-                  : "bg-slate-800 border border-slate-700 opacity-40 hover:opacity-80"
-              }`}
-              title="Ginásio de Português (Celadon) - Insígnia da Leitura 📚"
-            >
-              📚
-            </button>
-            <button
-              onClick={() => {
-                setActiveGymId("english");
-                setIsGymModalOpen(true);
-                playSfx("open");
-              }}
-              className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs transition cursor-pointer ${
-                gymBadges.english_thunder
-                  ? "bg-purple-500/30 border border-purple-400 text-purple-300 shadow-sm"
-                  : "bg-slate-800 border border-slate-700 opacity-40 hover:opacity-80"
-              }`}
-              title="Ginásio de Inglês (Vermilion) - Insígnia Global 🌍"
-            >
-              🌍
-            </button>
-          </div>
+          {/* Active GPS Route Floating Indicator */}
+          {activeGpsRoute && (
+            <div className="w-full bg-amber-950/85 backdrop-blur-md border border-amber-500/70 rounded-2xl px-3 py-1 flex items-center justify-between text-[11px] text-amber-200 shadow-xl">
+              <div className="flex items-center gap-1.5 font-bold truncate">
+                <span className="animate-pulse">🧭</span>
+                <span className="truncate">Siga as setas até {activeGpsRoute.targetName}!</span>
+              </div>
+              <button
+                onClick={() => setActiveGpsRoute(null)}
+                className="text-[10px] font-black text-amber-300 hover:text-white bg-amber-900/70 px-2 py-0.5 rounded-md ml-1.5 shrink-0 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+        </div>
 
-          {/* Rival Gary Challenge Trigger */}
-          <button
-            onClick={() => {
-              setIsRivalModalOpen(true);
-              playSfx("open");
-            }}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white rounded-xl border border-red-400 text-xs font-black shadow-md cursor-pointer transition active:scale-95"
-            title="Duelo com o Rival (Gary)"
-          >
-            <span>⚡</span>
-            <span className="hidden sm:inline">{rivalConfig?.name || "Rival"}</span>
-          </button>
-
-          {/* Sister Trade Cable Link Trigger */}
-          <button
-            onClick={() => {
-              setIsTradeModalOpen(true);
-              playSfx("open");
-            }}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white rounded-xl border border-indigo-400 text-xs font-black shadow-md cursor-pointer transition active:scale-95"
-            title="Trocar Pokémon com a irmã (Cabo Link)"
-          >
-            <span>🤝</span>
-            <span className="hidden sm:inline">Troca</span>
-            {otherPlayerSync && (
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-            )}
-          </button>
-
-          {/* Market Trigger */}
-          <button
-            onClick={() => {
-              setIsMarketOpen(true);
-              playSfx("open");
-            }}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-700 to-cyan-700 hover:from-blue-600 hover:to-cyan-600 text-white rounded-xl border border-blue-400 text-xs font-black shadow-md cursor-pointer transition active:scale-95"
-            title="Abrir PokéMarket da Cidade"
-          >
-            <ShoppingBag className="w-3.5 h-3.5 text-cyan-200" />
-            <span className="hidden sm:inline">Market</span>
-          </button>
-
-          {/* Indigo Plateau Exam & Revision Trigger */}
-          <button
-            onClick={() => {
-              setIsPlateauModalOpen(true);
-              playSfx("open");
-            }}
-            className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-black shadow-md cursor-pointer transition active:scale-95 ${
-              isExamWeekActive
-                ? "bg-gradient-to-r from-amber-600 via-indigo-600 to-purple-700 text-white border-amber-400 animate-pulse"
-                : "bg-gradient-to-r from-indigo-700 to-purple-800 hover:from-indigo-600 hover:to-purple-700 text-white border-indigo-400"
-            }`}
-            title="Abrir Simulado de Provas e Revisão no Indigo Plateau"
-          >
-            <span>🏔️</span>
-            <span className="hidden sm:inline">Indigo Plateau</span>
-            {isExamWeekActive ? (
-              <span className="text-[9px] bg-amber-400 text-slate-950 px-1 rounded-sm font-black uppercase">
-                Provas 2x!
-              </span>
-            ) : (
-              <span className="text-[9px] bg-indigo-500/40 text-indigo-200 px-1 rounded-sm font-bold hidden md:inline">
-                2x EXP
-              </span>
-            )}
-          </button>
-
-          {/* PokéCelular Trigger */}
-          <button
-            onClick={openPhoneIfAllowed}
-            className="relative flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 rounded-xl border border-sky-400 text-white text-xs font-black shadow-md cursor-pointer transition active:scale-95"
-            title="Abrir PokéCelular de Papai Carlos e Mamãe Renata"
-          >
-            <Smartphone className="w-4 h-4 text-sky-200 animate-pulse" />
-            <span className="hidden sm:inline">PokéCelular</span>
-            {hasUnreadPhone && (
-              <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping absolute -top-1 -right-1 border border-white" />
-            )}
-          </button>
-
-          {/* Stolen Pokemon Rescue Alert Trigger */}
+        {/* TOP-RIGHT CONTROLS: FULLSCREEN, SOUND, AND GBA RETRO START MENU */}
+        <div className="absolute top-2.5 right-2.5 z-20 flex items-center gap-1.5 pointer-events-auto">
+          {/* Stolen Pokemon Alert Badge */}
           {stolenPokemonList.length > 0 && (
             <button
               onClick={() => {
                 setIsRescueOpen(true);
                 playSfx("open");
               }}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-rose-600 to-red-600 text-white rounded-xl border border-rose-300 text-xs font-black shadow-md cursor-pointer animate-pulse active:scale-95"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-2xl bg-rose-600 border border-rose-300 text-white text-[11px] font-black shadow-lg animate-pulse active:scale-95 cursor-pointer"
               title="Resgatar Pokémon roubado pela Equipe Rocket"
             >
               <span>🚨</span>
-              <span>Resgatar!</span>
+              <span className="hidden sm:inline">Resgatar!</span>
             </button>
           )}
 
-          {/* Coins & XP */}
-          <div className="flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/30 px-2.5 py-1 rounded-lg text-amber-300 font-black text-xs">
-            <Coins className="w-3.5 h-3.5 text-amber-400" />
-            <span>{coins}</span>
-          </div>
-
-          <div className="flex items-center gap-1.5 bg-purple-500/10 border border-purple-500/30 px-2.5 py-1 rounded-lg text-purple-300 font-black text-xs">
-            <Star className="w-3.5 h-3.5 text-purple-400" />
-            <span>{xp} XP</span>
-          </div>
-
+          {/* Sound Toggle */}
           <button
             onClick={() => setIsMuted(!isMuted)}
-            className="p-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 transition"
+            className="w-8 h-8 rounded-xl bg-slate-900/80 backdrop-blur-md border border-slate-700 hover:bg-slate-800 text-slate-200 flex items-center justify-center transition shadow cursor-pointer active:scale-95"
             title={isMuted ? "Ativar som" : "Desativar som"}
           >
-            {isMuted ? <VolumeX className="w-4 h-4 text-rose-400" /> : <Volume2 className="w-4 h-4 text-emerald-400" />}
+            {isMuted ? <VolumeX className="w-3.5 h-3.5 text-rose-400" /> : <Volume2 className="w-3.5 h-3.5 text-emerald-400" />}
           </button>
 
+          {/* Fullscreen Toggle */}
           <button
-            onClick={() => setShowHelp(true)}
-            className="p-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 transition"
-            title="Como jogar"
+            onClick={toggleFullscreen}
+            className="w-8 h-8 rounded-xl bg-slate-900/80 backdrop-blur-md border border-slate-700 hover:bg-slate-800 text-slate-200 flex items-center justify-center transition shadow cursor-pointer active:scale-95"
+            title={isFullscreen ? "Sair da Tela Cheia" : "Tela Cheia"}
           >
-            <HelpCircle className="w-4 h-4 text-blue-400" />
+            {isFullscreen ? <Minimize className="w-3.5 h-3.5" /> : <Maximize className="w-3.5 h-3.5" />}
+          </button>
+
+          {/* Classic GBA START MENU BUTTON */}
+          <button
+            onClick={() => {
+              playSfx("open");
+              setIsStartMenuOpen((prev) => !prev);
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 hover:from-red-500 hover:to-amber-500 border-2 border-amber-300 text-white text-xs font-black shadow-xl transition active:scale-95 cursor-pointer"
+            title="Abrir Menu de Pokémon (START / MENU)"
+          >
+            <Menu className="w-4 h-4 text-amber-200" />
+            <span>MENU</span>
           </button>
         </div>
-      </header>
+          <canvas
+            ref={canvasRef}
+            width={760}
+            height={480}
+            onClick={handleCanvasClick}
+            className="modern-hd-canvas w-full h-full object-contain cursor-pointer touch-none"
+          />
 
-      {/* Main Game Screen */}
-      <main className="flex-1 flex flex-col items-center justify-center p-2 sm:p-4 max-w-6xl mx-auto w-full">
-        {/* Victory Notification Banner */}
-        {victoryNotice && (
-          <div className="w-full max-w-4xl mb-3 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 text-white px-4 py-2.5 rounded-xl border border-emerald-400 shadow-lg flex items-center justify-between text-xs sm:text-sm font-black animate-bounce">
-            <div className="flex items-center gap-2">
-              <Trophy className="w-5 h-5 text-amber-300" />
-              <span>{victoryNotice}</span>
-            </div>
-            <button
-              onClick={() => setVictoryNotice(null)}
-              className="text-emerald-100 hover:text-white text-xs bg-emerald-700/60 px-2 py-0.5 rounded"
-            >
-              OK
-            </button>
-          </div>
-        )}
-
-        {/* Game Boy Frame Wrapper */}
-        <div className="relative w-full max-w-4xl bg-slate-900 border-4 border-slate-700 rounded-3xl shadow-2xl overflow-hidden flex flex-col">
-          {/* Top Zone Entrance Toast (Pokémon FireRed Banner) */}
-          {zoneBanner && (
-            <div className="absolute top-3 left-4 z-20 bg-slate-950/90 backdrop-blur-md border-2 border-amber-500/60 rounded-xl px-4 py-2 shadow-xl flex items-center gap-3 animate-fade-in pointer-events-none">
-              <span className="text-2xl">{zoneBanner.icon}</span>
-              <div>
-                <p className="text-xs font-black uppercase tracking-wider text-amber-400">{zoneBanner.title}</p>
-                <p className="text-[11px] text-slate-300">{zoneBanner.subtitle}</p>
+          {/* Top-Left Overlay: Zone Banner + Camera Zoom Selector */}
+          <div className="absolute top-2.5 left-2.5 z-20 flex flex-col gap-1.5 items-start">
+            {zoneBanner && (
+              <div className="bg-slate-950/90 backdrop-blur-md border border-amber-500/60 rounded-xl px-3 py-1.5 shadow-xl flex items-center gap-2 animate-fade-in pointer-events-none">
+                <span className="text-lg">{zoneBanner.icon}</span>
+                <div>
+                  <p className="text-[11px] font-black uppercase tracking-wider text-amber-400">
+                    {zoneBanner.title}
+                  </p>
+                  <p className="text-[10px] text-slate-300">{zoneBanner.subtitle}</p>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Floating PokéCelular Notification Toast */}
-          {phoneToast && (
-            <div
-              onClick={() => {
-                setPhoneToast(null);
-                openPhoneIfAllowed();
-              }}
-              className="absolute top-3 right-4 z-20 bg-gradient-to-r from-sky-600 to-indigo-700 border-2 border-sky-300 text-white px-4 py-2 rounded-2xl shadow-2xl flex items-center gap-3 cursor-pointer animate-bounce active:scale-95 transition"
-            >
-              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-lg">
-                📱
-              </div>
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-wider text-sky-200">
-                  {phoneToast.sender} no PokéCelular
-                </p>
-                <p className="text-xs font-extrabold">{phoneToast.title}</p>
-              </div>
-            </div>
-          )}
-
-          {/* Canvas Viewport with Modern Bezel */}
-          <div className="relative flex items-center justify-center bg-slate-950 aspect-[16/10] max-h-[62vh] w-full overflow-hidden modern-screen-border">
-            <canvas
-              ref={canvasRef}
-              width={760}
-              height={480}
-              onClick={handleCanvasClick}
-              className="modern-hd-canvas w-full h-full object-contain cursor-pointer touch-none"
-            />
-
-            {/* Zoom Controls inside Canvas Viewport (Authentic FireRed Framing) */}
-            <div className="absolute bottom-4 left-4 z-20 flex items-center gap-1.5 bg-slate-900/90 backdrop-blur-md border border-slate-700/80 px-2 py-1.5 rounded-2xl shadow-xl">
-              <span className="text-[10px] font-black text-amber-400 flex items-center gap-1 select-none">
-                <span>🔍</span>
-                <span className="hidden sm:inline">Zoom:</span>
-              </span>
-
-              {/* Minus button */}
-              <button
-                onClick={() => {
-                  setCameraZoom((prev) => Math.max(1.0, Math.round((prev - 0.15) * 100) / 100));
-                  playSfx("click");
-                }}
-                className="w-6 h-6 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center text-xs font-black transition cursor-pointer active:scale-90"
-                title="Diminuir Zoom"
-              >
-                −
-              </button>
-
-              {/* Preset 1.1x (Amplo) */}
+            {/* Compact Zoom Selector */}
+            <div className="flex items-center gap-1 bg-slate-900/85 backdrop-blur-md border border-slate-700/80 px-2 py-1 rounded-xl shadow-lg">
+              <span className="text-[10px] font-black text-amber-400 select-none">🔍</span>
               <button
                 onClick={() => {
                   setCameraZoom(1.1);
                   playSfx("click");
                 }}
-                className={`px-2 py-0.5 rounded-lg text-[10px] font-black transition cursor-pointer ${
+                className={`px-1.5 py-0.5 rounded text-[10px] font-black transition cursor-pointer ${
                   Math.abs(cameraZoom - 1.1) < 0.05
-                    ? "bg-amber-500 text-slate-950 shadow-sm"
-                    : "text-slate-300 hover:text-white hover:bg-slate-800"
+                    ? "bg-amber-500 text-slate-950"
+                    : "text-slate-300 hover:text-white"
                 }`}
-                title="Modo Panorâmico (1.1x)"
               >
                 1.1x
               </button>
-
-              {/* Preset 1.45x (Padrão FireRed) */}
               <button
                 onClick={() => {
                   setCameraZoom(1.45);
                   playSfx("click");
                 }}
-                className={`px-2 py-0.5 rounded-lg text-[10px] font-black transition cursor-pointer ${
+                className={`px-1.5 py-0.5 rounded text-[10px] font-black transition cursor-pointer ${
                   Math.abs(cameraZoom - 1.45) < 0.05
-                    ? "bg-amber-500 text-slate-950 shadow-sm"
-                    : "text-slate-300 hover:text-white hover:bg-slate-800"
+                    ? "bg-amber-500 text-slate-950"
+                    : "text-slate-300 hover:text-white"
                 }`}
-                title="Padrão FireRed GBA (1.45x - Recomendado)"
               >
-                1.45x ★
+                1.45x
               </button>
-
-              {/* Preset 1.8x (Super Zoom) */}
               <button
                 onClick={() => {
                   setCameraZoom(1.8);
                   playSfx("click");
                 }}
-                className={`px-2 py-0.5 rounded-lg text-[10px] font-black transition cursor-pointer ${
+                className={`px-1.5 py-0.5 rounded text-[10px] font-black transition cursor-pointer ${
                   Math.abs(cameraZoom - 1.8) < 0.05
-                    ? "bg-amber-500 text-slate-950 shadow-sm"
-                    : "text-slate-300 hover:text-white hover:bg-slate-800"
+                    ? "bg-amber-500 text-slate-950"
+                    : "text-slate-300 hover:text-white"
                 }`}
-                title="Modo Próximo (1.8x)"
               >
                 1.8x
               </button>
-
-              {/* Plus button */}
-              <button
-                onClick={() => {
-                  setCameraZoom((prev) => Math.min(2.2, Math.round((prev + 0.15) * 100) / 100));
-                  playSfx("click");
-                }}
-                className="w-6 h-6 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center text-xs font-black transition cursor-pointer active:scale-90"
-                title="Aumentar Zoom"
-              >
-                +
-              </button>
             </div>
-
-            {/* Corner Quick Widgets inside Canvas Viewport */}
-            <div className="absolute bottom-4 right-4 z-20 flex items-center gap-2">
-              {/* Pokédex button */}
-              <button
-                onClick={() => {
-                  setIsPokedexOpen(true);
-                  playSfx("open");
-                }}
-                className="flex items-center gap-1.5 bg-slate-900/90 hover:bg-slate-800 border border-red-400/60 text-white px-3 py-1.5 rounded-2xl shadow-xl transition active:scale-95 cursor-pointer backdrop-blur-md"
-                title="Abrir Pokédex de Kanto (151 Pokémon)"
-              >
-                <span>🔴</span>
-                <span className="text-[10px] font-black text-red-300 hidden sm:inline">
-                  Pokédex ({pokemonList.length})
-                </span>
-              </button>
-
-              {/* Visual / Wardrobe button */}
-              <button
-                onClick={() => {
-                  setIsCustomizationOpen(true);
-                  playSfx("open");
-                }}
-                className="flex items-center gap-1.5 bg-slate-900/90 hover:bg-slate-800 border border-pink-400/60 text-white px-3 py-1.5 rounded-2xl shadow-xl transition active:scale-95 cursor-pointer backdrop-blur-md"
-                title="Personalizar Personagem e Roupas"
-              >
-                <span>✨</span>
-                <span className="text-[10px] font-black text-pink-300 hidden sm:inline">Visual</span>
-              </button>
-
-              {/* Bag button */}
-              <button
-                onClick={() => {
-                  setIsBagOpen(true);
-                  playSfx("open");
-                }}
-                className="flex items-center gap-1.5 bg-slate-900/90 hover:bg-slate-800 border border-indigo-400/60 text-white px-3 py-1.5 rounded-2xl shadow-xl transition active:scale-95 cursor-pointer backdrop-blur-md"
-                title="Abrir Bolsa Pokémon"
-              >
-                <span>🎒</span>
-                <span className="text-[10px] font-black text-indigo-300 hidden sm:inline">
-                  Bolsa ({pokemonList.length})
-                </span>
-              </button>
-
-              {/* PokéCelular button */}
-              <button
-                onClick={openPhoneIfAllowed}
-                className="flex items-center gap-1.5 bg-slate-900/90 hover:bg-slate-800 border border-sky-400/60 text-white px-3 py-1.5 rounded-2xl shadow-xl transition active:scale-95 cursor-pointer backdrop-blur-md"
-                title="Abrir PokéCelular"
-              >
-                <div className="relative">
-                  <Smartphone className="w-4 h-4 text-sky-400" />
-                  {hasUnreadPhone && (
-                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full animate-ping" />
-                  )}
-                </div>
-                <span className="text-[10px] font-black text-sky-300 hidden sm:inline">Celular</span>
-              </button>
-            </div>
-
-            {/* Authentic Pokémon FireRed Retro Dialogue Window */}
-            {activeDialog && (
-              <div className="absolute bottom-3 left-3 right-3 z-30 bg-[#f8f8f0] border-4 border-[#505860] rounded-2xl p-4 shadow-2xl animate-in fade-in slide-in-from-bottom-2 text-[#282828]">
-                {/* Speaker Header with FireRed Badge */}
-                <div className="flex items-center justify-between border-b-2 border-[#d0d8e0] pb-2 mb-2">
-                  <div className="flex items-center gap-2">
-                    <div className="bg-[#d03028] text-white px-3 py-0.5 rounded-lg flex items-center gap-1.5 shadow-sm border border-[#902018]">
-                      <span className="text-xs">🔴</span>
-                      <span className="font-black text-xs uppercase tracking-wider">
-                        {activeDialog.speaker}
-                      </span>
-                    </div>
-                    {activeDialog.role && (
-                      <span className="bg-[#385890] text-white text-[10px] font-bold px-2.5 py-0.5 rounded-lg border border-[#203860]">
-                        {activeDialog.role}
-                      </span>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => setActiveDialog(null)}
-                    className="text-[#606870] hover:text-[#181818] text-xs font-bold px-2 py-0.5 rounded bg-[#e8e8dc] hover:bg-[#d8d8cc] border border-[#c0c8d0] transition cursor-pointer"
-                  >
-                    Fechar ✕
-                  </button>
-                </div>
-
-                {/* Dialog Body with clear retro font */}
-                <p className="text-xs sm:text-sm font-bold leading-relaxed text-[#202020] mb-3 tracking-wide">
-                  {activeDialog.text}
-                </p>
-
-                {/* Optional Teacher Quiz in Classic GBA Card */}
-                {activeDialog.quiz && (
-                  <div className="mt-2 bg-[#ecece0] border-2 border-[#b0b8c0] rounded-xl p-3 shadow-inner">
-                    <p className="text-xs font-black text-[#8c2820] mb-2 flex items-center gap-1.5">
-                      <span className="text-sm">❓</span>
-                      <span>Desafio: {activeDialog.quiz.question}</span>
-                    </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                      {activeDialog.quiz.options.map((opt, idx) => (
-                        <button
-                          key={idx}
-                          disabled={activeDialog.hasAnswered}
-                          onClick={() => handleAnswerQuiz(idx)}
-                          className={`px-3 py-2 rounded-xl text-xs font-bold transition text-left border-2 ${
-                            activeDialog.hasAnswered
-                              ? idx === activeDialog.quiz!.correctIndex
-                                ? "bg-emerald-600 text-white border-emerald-700 shadow-md"
-                                : "bg-[#d8d8cc] text-[#808890] border-[#b0b8c0] opacity-60"
-                              : "bg-[#ffffff] hover:bg-[#d03028] text-[#282828] hover:text-white border-[#9098a0] shadow active:scale-95 cursor-pointer"
-                          }`}
-                        >
-                          <span className="mr-1.5 text-[#d03028] font-black">▶</span>
-                          <span>{opt}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Action Button for in-room NPC challenges/features */}
-                {activeDialog.actionButton && (
-                  <div className="mt-3 flex justify-start">
-                    <button
-                      onClick={() => {
-                        const act = activeDialog.actionButton;
-                        setActiveDialog(null);
-                        act?.onClick();
-                      }}
-                      className="px-4 py-2 bg-[#d03028] hover:bg-[#b02018] text-white font-black text-xs rounded-xl shadow-lg border-2 border-[#902018] active:scale-95 transition flex items-center gap-2 cursor-pointer"
-                    >
-                      <span>▶</span>
-                      <span>{activeDialog.actionButton.label}</span>
-                    </button>
-                  </div>
-                )}
-
-                {/* Blinking FireRed Red Prompt Arrow */}
-                <div className="flex justify-end mt-2 items-center gap-1.5">
-                  <span className="text-[10px] font-bold text-[#707880]">
-                    Toque ou aperte ESPAÇO / ENTER para prosseguir
-                  </span>
-                  <span className="text-[#d03028] font-black text-sm animate-bounce">
-                    ▼
-                  </span>
-                </div>
-              </div>
-            )}
           </div>
 
-          {/* iPad / Tablet Touch Controls & Game Bar (Authentic GBA Hardware Aesthetic) */}
-          <div className="bg-slate-950 border-t-2 border-slate-800 p-3 flex flex-wrap items-center justify-between gap-4">
-            {/* Virtual GBA D-Pad (Left side) */}
-            <div className="flex items-center gap-3">
-              <div className="relative w-32 h-32 gba-dpad-housing rounded-full p-2 flex items-center justify-center">
-                {/* UP */}
-                <button
-                  onMouseDown={() => handleDpadPress("up")}
-                  onMouseUp={handleDpadRelease}
-                  onTouchStart={(e) => {
-                    e.preventDefault();
-                    handleDpadPress("up");
-                  }}
-                  onTouchEnd={(e) => {
-                    e.preventDefault();
-                    handleDpadRelease();
-                  }}
-                  className="absolute top-2 left-1/2 -translate-x-1/2 w-10 h-10 bg-slate-800 active:bg-blue-600 text-slate-200 rounded-t-xl border-t-2 border-x-2 border-slate-600 flex items-center justify-center font-black text-sm shadow-md active:scale-95 transition"
-                  title="Mover para Cima"
-                >
-                  ▲
-                </button>
-
-                {/* DOWN */}
-                <button
-                  onMouseDown={() => handleDpadPress("down")}
-                  onMouseUp={handleDpadRelease}
-                  onTouchStart={(e) => {
-                    e.preventDefault();
-                    handleDpadPress("down");
-                  }}
-                  onTouchEnd={(e) => {
-                    e.preventDefault();
-                    handleDpadRelease();
-                  }}
-                  className="absolute bottom-2 left-1/2 -translate-x-1/2 w-10 h-10 bg-slate-800 active:bg-blue-600 text-slate-200 rounded-b-xl border-b-2 border-x-2 border-slate-600 flex items-center justify-center font-black text-sm shadow-md active:scale-95 transition"
-                  title="Mover para Baixo"
-                >
-                  ▼
-                </button>
-
-                {/* LEFT */}
-                <button
-                  onMouseDown={() => handleDpadPress("left")}
-                  onMouseUp={handleDpadRelease}
-                  onTouchStart={(e) => {
-                    e.preventDefault();
-                    handleDpadPress("left");
-                  }}
-                  onTouchEnd={(e) => {
-                    e.preventDefault();
-                    handleDpadRelease();
-                  }}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-slate-800 active:bg-blue-600 text-slate-200 rounded-l-xl border-l-2 border-y-2 border-slate-600 flex items-center justify-center font-black text-sm shadow-md active:scale-95 transition"
-                  title="Mover para Esquerda"
-                >
-                  ◀
-                </button>
-
-                {/* RIGHT */}
-                <button
-                  onMouseDown={() => handleDpadPress("right")}
-                  onMouseUp={handleDpadRelease}
-                  onTouchStart={(e) => {
-                    e.preventDefault();
-                    handleDpadPress("right");
-                  }}
-                  onTouchEnd={(e) => {
-                    e.preventDefault();
-                    handleDpadRelease();
-                  }}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-slate-800 active:bg-blue-600 text-slate-200 rounded-r-xl border-r-2 border-y-2 border-slate-600 flex items-center justify-center font-black text-sm shadow-md active:scale-95 transition"
-                  title="Mover para Direita"
-                >
-                  ▶
-                </button>
-
-                {/* Tactile Center Pivot */}
-                <div className="w-6 h-6 bg-slate-900 rounded-full border border-slate-700 shadow-inner" />
-              </div>
-
-              <div className="hidden sm:block text-[11px] text-slate-400 leading-tight">
-                <p className="font-bold text-slate-200">🎮 Controles Touch & Teclado:</p>
-                <p>Use o D-Pad virtual, teclado (setas/WASD) ou toque no mapa.</p>
-              </div>
-            </div>
-
-            {/* Quick Status Bar */}
-            <div className="flex-1 flex flex-col items-center justify-center text-center px-2">
-              {activeInterior ? (
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-black text-amber-300 uppercase tracking-wider flex items-center gap-1.5 drop-shadow">
-                    {activeInterior.buildingId === "family_house" && (
-                      <>🏡 Casa da Família • {activeInterior.floor === 1 ? "1º Andar" : "2º Andar"}</>
-                    )}
-                    {activeInterior.buildingId === "pokemart" && <>🛒 PokéMart da Vila</>}
-                    {activeInterior.buildingId === "science_lab" && <>🏥 Centro Pokémon & Laboratório</>}
-                    {activeInterior.buildingId === "fossil_cave" && <>⛰️ Caverna dos Fósseis • Monte da Lua</>}
-                    {activeInterior.buildingId === "insect_forest" && <>🌲 Floresta dos Insetos • Viridian Forest</>}
-                    {activeInterior.buildingId === "oak_lab" && <>🔬 Laboratório do Prof. Carvalho</>}
-                    {activeInterior.buildingId === "rival_house" && <>🏡 Casa do Rival & Daisy</>}
-                    {activeInterior.buildingId === "indigo_plateau" && <>👑 Indigo Plateau • Cúpula dos Campeões</>}
-                    {activeInterior.buildingId === "math_academy" && <>📐 Academia de Matemática</>}
-                    {activeInterior.buildingId === "portuguese_lib" && <>📚 Grande Biblioteca</>}
-                    {activeInterior.buildingId === "english_tower" && <>⚡ Torre Tech de Inglês</>}
-                  </span>
-                  <button
-                    onClick={handleExitInterior}
-                    className="px-2.5 py-0.5 rounded-full bg-rose-600/90 hover:bg-rose-500 text-white text-[10px] font-black shadow flex items-center gap-1 border border-rose-300/40 cursor-pointer active:scale-95 transition-all"
-                    title="Sair para a Vila do Saber"
-                  >
-                    🚪 Sair
-                  </button>
+          {/* Top-Right Overlay: Floating PokéCelular Notification Toast with Direct "Criar Rota" Button */}
+          {phoneToast && (
+            <div className="absolute top-2.5 right-2.5 z-20 bg-gradient-to-r from-sky-600 to-indigo-700 border-2 border-sky-300 text-white px-3 py-1.5 rounded-2xl shadow-2xl flex items-center gap-2 animate-bounce">
+              <div
+                onClick={() => {
+                  setPhoneToast(null);
+                  openPhoneIfAllowed("dad");
+                }}
+                className="flex items-center gap-2 cursor-pointer"
+              >
+                <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-base">
+                  📱
                 </div>
+                <div>
+                  <p className="text-[9px] font-black uppercase tracking-wider text-sky-200">
+                    {phoneToast.sender} no PokéCelular
+                  </p>
+                  <p className="text-[11px] font-extrabold">{phoneToast.title}</p>
+                </div>
+              </div>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const target = phoneToast.targetId || activeQuest?.targetSubjectId || "viridian";
+                  setPhoneToast(null);
+                  activateGpsRouteToTarget(target);
+                  openPhoneIfAllowed("map");
+                }}
+                className="bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-[10px] px-2 py-1 rounded-xl shadow-md transition active:scale-95 shrink-0 cursor-pointer"
+              >
+                🗺️ Criar Rota
+              </button>
+            </div>
+          )}
+
+          {/* LEFT THUMB ZONE (Ergonomic Landscape Tablet D-Pad) */}
+          <div className="absolute bottom-2.5 left-2.5 sm:bottom-4 sm:left-4 z-20 flex items-center">
+            <div className="relative w-28 h-28 sm:w-32 sm:h-32 bg-slate-950/75 backdrop-blur-md border-2 border-slate-600/80 rounded-full p-2 flex items-center justify-center shadow-2xl">
+              {/* UP */}
+              <button
+                onMouseDown={() => handleDpadPress("up")}
+                onMouseUp={handleDpadRelease}
+                onTouchStart={(e) => {
+                  e.preventDefault();
+                  handleDpadPress("up");
+                }}
+                onTouchEnd={(e) => {
+                  e.preventDefault();
+                  handleDpadRelease();
+                }}
+                className="absolute top-1.5 left-1/2 -translate-x-1/2 w-9 h-9 sm:w-10 sm:h-10 bg-slate-800/95 active:bg-blue-600 text-slate-100 rounded-t-xl border-t-2 border-x-2 border-slate-500 flex items-center justify-center font-black text-sm shadow-md active:scale-95 transition"
+                title="Mover para Cima"
+              >
+                ▲
+              </button>
+
+              {/* DOWN */}
+              <button
+                onMouseDown={() => handleDpadPress("down")}
+                onMouseUp={handleDpadRelease}
+                onTouchStart={(e) => {
+                  e.preventDefault();
+                  handleDpadPress("down");
+                }}
+                onTouchEnd={(e) => {
+                  e.preventDefault();
+                  handleDpadRelease();
+                }}
+                className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-9 h-9 sm:w-10 sm:h-10 bg-slate-800/95 active:bg-blue-600 text-slate-100 rounded-b-xl border-b-2 border-x-2 border-slate-500 flex items-center justify-center font-black text-sm shadow-md active:scale-95 transition"
+                title="Mover para Baixo"
+              >
+                ▼
+              </button>
+
+              {/* LEFT */}
+              <button
+                onMouseDown={() => handleDpadPress("left")}
+                onMouseUp={handleDpadRelease}
+                onTouchStart={(e) => {
+                  e.preventDefault();
+                  handleDpadPress("left");
+                }}
+                onTouchEnd={(e) => {
+                  e.preventDefault();
+                  handleDpadRelease();
+                }}
+                className="absolute left-1.5 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-10 sm:h-10 bg-slate-800/95 active:bg-blue-600 text-slate-100 rounded-l-xl border-l-2 border-y-2 border-slate-500 flex items-center justify-center font-black text-sm shadow-md active:scale-95 transition"
+                title="Mover para Esquerda"
+              >
+                ◀
+              </button>
+
+              {/* RIGHT */}
+              <button
+                onMouseDown={() => handleDpadPress("right")}
+                onMouseUp={handleDpadRelease}
+                onTouchStart={(e) => {
+                  e.preventDefault();
+                  handleDpadPress("right");
+                }}
+                onTouchEnd={(e) => {
+                  e.preventDefault();
+                  handleDpadRelease();
+                }}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-10 sm:h-10 bg-slate-800/95 active:bg-blue-600 text-slate-100 rounded-r-xl border-r-2 border-y-2 border-slate-500 flex items-center justify-center font-black text-sm shadow-md active:scale-95 transition"
+                title="Mover para Direita"
+              >
+                ▶
+              </button>
+
+              {/* Tactile Center Pivot */}
+              <div className="w-5 h-5 bg-slate-900 rounded-full border border-slate-700 shadow-inner" />
+            </div>
+          </div>
+
+          {/* CENTER-BOTTOM STATUS & QUICK EXIT PILL */}
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-20 hidden md:flex flex-col items-center gap-1 max-w-md pointer-events-auto">
+            <div className="bg-slate-950/85 backdrop-blur-md border border-slate-700/90 px-3 py-1 rounded-2xl shadow-xl flex items-center gap-2 text-[11px]">
+              {activeInterior ? (
+                <>
+                  <span className="font-black text-amber-300 truncate max-w-[190px]">
+                    {activeInterior.buildingId === "family_house"
+                      ? `🏡 Casa • ${activeInterior.floor === 1 ? "Térreo" : "2º Andar"}`
+                      : `🏛️ ${activeInterior.buildingName}`}
+                  </span>
+                  {activeInterior.buildingId === "family_house" && activeInterior.floor === 2 && (
+                    <button
+                      onClick={() => {
+                        const p = playerRef.current;
+                        targetMoveTile.current = null;
+                        touchDirection.current = null;
+                        keysDown.current = {};
+                        playSfx("open");
+                        setActiveInterior((prev) => (prev ? { ...prev, floor: 1 } : null));
+                        p.gridX = 8;
+                        p.gridY = 3;
+                        p.drawX = 8;
+                        p.drawY = 3;
+                        p.direction = "down";
+                        p.isMoving = false;
+                        p.moveProgress = 0;
+                        setCurrentZone("Casa da Família • Térreo");
+                        setVictoryNotice("Desceu para o 1º Andar: Sala & Cozinha 🏡");
+                        if (pokemonList.length === 0) {
+                          setTimeout(() => {
+                            setActiveDialog({
+                              speaker: "Papai Carlos 👨‍👧",
+                              role: "Família • Escolha do Inicial",
+                              avatarSprite: "parent",
+                              text: `Bom dia, ${playerName}! Venha até a mesa da sala: preparei os 4 Pokémon iniciais (Charmander, Bulbasaur, Squirtle e Pikachu) para você escolher seu primeiro parceiro!`,
+                            });
+                            setIsStarterModalOpen(true);
+                          }, 350);
+                        }
+                      }}
+                      className="px-2 py-0.5 rounded-full bg-amber-500 hover:bg-amber-400 text-slate-950 text-[10px] font-black shadow cursor-pointer active:scale-95"
+                    >
+                      🪜 Descer p/ Térreo
+                    </button>
+                  )}
+                  {(activeInterior.buildingId !== "family_house" || activeInterior.floor === 1) && (
+                    <button
+                      onClick={handleExitInterior}
+                      className="px-2 py-0.5 rounded-full bg-rose-600 hover:bg-rose-500 text-white text-[10px] font-black shadow cursor-pointer active:scale-95"
+                    >
+                      🚪 Sair
+                    </button>
+                  )}
+                </>
               ) : (
-                <span className="text-xs font-black text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <MapPin className="w-3.5 h-3.5" />
+                <span className="font-black text-amber-400 flex items-center gap-1">
+                  <MapPin className="w-3 h-3" />
                   <span>{currentZone}</span>
                 </span>
               )}
-              <p className="text-[11px] text-slate-400 mt-0.5">
-                Treinadora: <strong className="text-slate-200">{playerName}</strong> • Irmã:{" "}
-                <strong className="text-slate-200">{sisterName}</strong>
-              </p>
-              {activeQuest && !activeQuest.isCompleted && (
-                <div className="mt-1 px-3 py-1 bg-amber-500/20 border-2 border-amber-400/50 rounded-full text-[10px] font-black text-amber-300 animate-pulse flex items-center gap-1 shadow">
-                  <span>🎯 Pedido Ativo:</span>
-                  <span>{activeQuest.title}</span>
-                </div>
-              )}
-            </div>
 
-            {/* Tactile Action Buttons (Right side - Bolsa, Celular, B and A) */}
-            <div className="flex items-center gap-2.5">
+              <span className="text-slate-600">|</span>
+              <span className="text-emerald-300 font-bold">🌿 Caças: {wildHuntQuota}</span>
+              <span className="text-sky-300 font-bold">🏫 Cap: {completedSchoolChapters.length}</span>
+
+              <button
+                onClick={() => setShowRocketHudModal(true)}
+                className="px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-rose-300 font-black text-[10px] border border-slate-700 cursor-pointer"
+                title="Ver Bloqueios da Equipe Rocket e Rotas"
+              >
+                🚀 Rotas
+              </button>
+            </div>
+          </div>
+
+          {/* RIGHT THUMB ZONE (Ergonomic Landscape Tablet Action Pad: Bolsa, Celular, B, A) */}
+          <div className="absolute bottom-2.5 right-2.5 sm:bottom-4 sm:right-4 z-20 flex flex-col items-end gap-2">
+            {/* Quick Interior Exit Button on Mobile/Small screens */}
+            {activeInterior && (
+              <div className="flex md:hidden items-center gap-1.5">
+                {activeInterior.buildingId === "family_house" && activeInterior.floor === 2 ? (
+                  <button
+                    onClick={() => {
+                      const p = playerRef.current;
+                      targetMoveTile.current = null;
+                      touchDirection.current = null;
+                      keysDown.current = {};
+                      playSfx("open");
+                      setActiveInterior((prev) => (prev ? { ...prev, floor: 1 } : null));
+                      p.gridX = 8;
+                      p.gridY = 3;
+                      p.drawX = 8;
+                      p.drawY = 3;
+                      p.direction = "down";
+                      p.isMoving = false;
+                      p.moveProgress = 0;
+                      setCurrentZone("Casa da Família • Térreo");
+                      if (pokemonList.length === 0) {
+                        setTimeout(() => {
+                          setIsStarterModalOpen(true);
+                        }, 350);
+                      }
+                    }}
+                    className="px-2.5 py-1 rounded-full bg-amber-500 text-slate-950 text-[10px] font-black shadow-lg"
+                  >
+                    🪜 Descer Escada
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleExitInterior}
+                    className="px-2.5 py-1 rounded-full bg-rose-600 text-white text-[10px] font-black shadow-lg"
+                  >
+                    🚪 Sair
+                  </button>
+                )}
+              </div>
+            )}
+
+            <div className="flex items-center gap-2 bg-slate-950/75 backdrop-blur-md border-2 border-slate-600/80 px-2.5 py-2 rounded-3xl shadow-2xl">
               {/* Bolsa Touch Button */}
               <button
                 onClick={() => {
                   setIsBagOpen(true);
                   playSfx("open");
                 }}
-                className="w-11 h-11 rounded-2xl gba-btn-sub-tactile flex flex-col items-center justify-center text-white cursor-pointer"
+                className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl gba-btn-sub-tactile flex flex-col items-center justify-center text-white cursor-pointer"
                 title="Abrir Bolsa de Itens e Pokémon"
               >
                 <span className="text-xs">🎒</span>
-                <span className="text-[7.5px] font-black uppercase text-sky-200">Bolsa</span>
+                <span className="text-[7px] font-black uppercase text-sky-200">Bolsa</span>
               </button>
 
               {/* PokéCelular Touch Button */}
               <button
                 onClick={openPhoneIfAllowed}
-                className="w-11 h-11 rounded-2xl gba-btn-sub-tactile flex flex-col items-center justify-center text-white cursor-pointer relative"
+                className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl gba-btn-sub-tactile flex flex-col items-center justify-center text-white cursor-pointer relative"
                 title="Abrir PokéCelular"
               >
                 <Smartphone className="w-3.5 h-3.5 text-sky-200" />
-                <span className="text-[7.5px] font-black uppercase text-sky-200">Celular</span>
+                <span className="text-[7px] font-black uppercase text-sky-200">Celular</span>
                 {hasUnreadPhone && (
                   <span className="w-2.5 h-2.5 rounded-full bg-rose-500 absolute -top-1 -right-1 border border-white animate-ping" />
                 )}
@@ -6295,48 +6851,459 @@ export default function RpgPage() {
                   e.preventDefault();
                   playerRef.current.isRunning = false;
                 }}
-                className="w-13 h-13 rounded-full gba-btn-b-tactile flex flex-col items-center justify-center text-slate-100 cursor-pointer"
+                className="w-12 h-12 sm:w-13 sm:h-13 rounded-full gba-btn-b-tactile flex flex-col items-center justify-center text-slate-100 cursor-pointer"
                 title="Correr (B)"
               >
                 <span className="font-black text-sm">B</span>
-                <span className="text-[8px] font-bold uppercase tracking-wider text-slate-300">Correr</span>
+                <span className="text-[7.5px] font-bold uppercase tracking-wider text-slate-300">Correr</span>
               </button>
 
               {/* A Button: Action / Interact */}
               <button
                 onClick={handleInteract}
-                className="w-14 h-14 rounded-full gba-btn-a-tactile flex flex-col items-center justify-center text-white cursor-pointer"
+                className="w-13 h-13 sm:w-14 sm:h-14 rounded-full gba-btn-a-tactile flex flex-col items-center justify-center text-white cursor-pointer"
                 title="Ação / Interagir (A)"
               >
                 <span className="font-black text-base">A</span>
-                <span className="text-[8.5px] font-black uppercase tracking-wider text-rose-100">Ação</span>
+                <span className="text-[8px] font-black uppercase tracking-wider text-rose-100">Ação</span>
               </button>
             </div>
           </div>
+
+          {/* Authentic Pokémon FireRed Retro Dialogue Window (Centered so thumbs remain free) */}
+          {activeDialog && (
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 w-[94%] max-w-xl z-30 bg-[#f8f8f0] border-4 border-[#505860] rounded-2xl p-3.5 shadow-2xl animate-in fade-in slide-in-from-bottom-2 text-[#282828] max-h-[75%] overflow-y-auto">
+              {/* Speaker Header with FireRed Badge */}
+              <div className="flex items-center justify-between border-b-2 border-[#d0d8e0] pb-1.5 mb-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="bg-[#d03028] text-white px-2.5 py-0.5 rounded-lg flex items-center gap-1.5 shadow-sm border border-[#902018]">
+                    <span className="text-xs">🔴</span>
+                    <span className="font-black text-xs uppercase tracking-wider">
+                      {activeDialog.speaker}
+                    </span>
+                  </div>
+                  {activeDialog.role && (
+                    <span className="bg-[#385890] text-white text-[10px] font-bold px-2 py-0.5 rounded-lg border border-[#203860]">
+                      {activeDialog.role}
+                    </span>
+                  )}
+                </div>
+                <button
+                  onClick={() => setActiveDialog(null)}
+                  className="text-[#606870] hover:text-[#181818] text-xs font-bold px-2 py-0.5 rounded bg-[#e8e8dc] hover:bg-[#d8d8cc] border border-[#c0c8d0] transition cursor-pointer"
+                >
+                  Fechar ✕
+                </button>
+              </div>
+
+              {/* Dialog Body with clear retro font */}
+              <p className="text-xs sm:text-sm font-bold leading-relaxed text-[#202020] mb-2.5 tracking-wide">
+                {activeDialog.text}
+              </p>
+
+              {/* Optional Teacher Quiz in Classic GBA Card */}
+              {activeDialog.quiz && (
+                <div className="mt-2 bg-[#ecece0] border-2 border-[#b0b8c0] rounded-xl p-2.5 shadow-inner">
+                  <p className="text-xs font-black text-[#8c2820] mb-2 flex items-center gap-1.5">
+                    <span className="text-sm">❓</span>
+                    <span>Desafio: {activeDialog.quiz.question}</span>
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {activeDialog.quiz.options.map((opt, idx) => (
+                      <button
+                        key={idx}
+                        disabled={activeDialog.hasAnswered}
+                        onClick={() => handleAnswerQuiz(idx)}
+                        className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition text-left border-2 ${
+                          activeDialog.hasAnswered
+                            ? idx === activeDialog.quiz!.correctIndex
+                              ? "bg-emerald-600 text-white border-emerald-700 shadow-md"
+                              : "bg-[#d8d8cc] text-[#808890] border-[#b0b8c0] opacity-60"
+                            : "bg-[#ffffff] hover:bg-[#d03028] text-[#282828] hover:text-white border-[#9098a0] shadow active:scale-95 cursor-pointer"
+                        }`}
+                      >
+                        <span className="mr-1.5 text-[#d03028] font-black">▶</span>
+                        <span>{opt}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Action Button for in-room NPC challenges/features */}
+              {activeDialog.actionButton && (
+                <div className="mt-2.5 flex justify-start">
+                  <button
+                    onClick={() => {
+                      const act = activeDialog.actionButton;
+                      setActiveDialog(null);
+                      act?.onClick();
+                    }}
+                    className="px-3.5 py-1.5 bg-[#d03028] hover:bg-[#b02018] text-white font-black text-xs rounded-xl shadow-lg border-2 border-[#902018] active:scale-95 transition flex items-center gap-2 cursor-pointer"
+                  >
+                    <span>▶</span>
+                    <span>{activeDialog.actionButton.label}</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Blinking FireRed Red Prompt Arrow */}
+              <div className="flex justify-end mt-1.5 items-center gap-1.5">
+                <span className="text-[10px] font-bold text-[#707880]">
+                  Toque em Fechar ou aperte A / ESPAÇO
+                </span>
+                <span className="text-[#d03028] font-black text-sm animate-bounce">▼</span>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Route Blockade Status HUD (Rocket Checkpoints & Supplies) */}
-        <div className="w-full max-w-4xl mt-3 bg-slate-900 border border-slate-800 p-3 rounded-2xl shadow-md">
-          <div className="flex items-center justify-between mb-2 pb-2 border-b border-slate-800 flex-wrap gap-2">
-            <div className="flex items-center gap-2">
-              <span className="text-base">🚀</span>
-              <span className="text-xs font-black uppercase tracking-wider text-rose-400">
-                Bloqueios da Equipe Rocket (Passagens das Cidades)
-              </span>
+      {/* AUTHENTIC GBA FIRE-RED START MENU MODAL */}
+      {isStartMenuOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center sm:items-start justify-center sm:justify-end p-3 sm:p-5 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150"
+          onClick={() => setIsStartMenuOpen(false)}
+        >
+          <div
+            className="w-full max-w-sm bg-[#f8f8f0] border-4 border-[#505860] rounded-3xl p-4 shadow-2xl text-[#202020] animate-in slide-in-from-right-4 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header: FireRed START Menu title & close */}
+            <div className="flex items-center justify-between pb-2.5 border-b-2 border-[#d0d8e0] mb-3">
+              <div className="flex items-center gap-2">
+                <div className="bg-[#d03028] text-white px-2.5 py-0.5 rounded-lg text-xs font-black uppercase tracking-wider shadow">
+                  START
+                </div>
+                <h3 className="text-xs font-black text-[#202020] tracking-wide uppercase">
+                  Menu da Treinadora
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsStartMenuOpen(false)}
+                className="w-7 h-7 rounded-full bg-[#e8e8dc] hover:bg-[#d8d8cc] border border-[#c0c8d0] flex items-center justify-center text-xs font-black text-[#505860] hover:text-[#181818] transition cursor-pointer"
+                title="Fechar Menu (ESC)"
+              >
+                ✕
+              </button>
             </div>
 
-            <div className="flex items-center gap-2">
+            {/* Profile summary banner */}
+            <div className="bg-[#e8ece8] border-2 border-[#b0b8c0] rounded-2xl p-2.5 mb-3 flex items-center justify-between shadow-inner">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">
+                  {activeProfileId === "cecilia" ? "⚡" : "🦊"}
+                </span>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-black text-[#202020]">
+                      {playerName}
+                    </span>
+                    <span className="text-[10px] font-bold px-1.5 py-0.2 bg-[#d03028] text-white rounded">
+                      {currentYear}º Ano
+                    </span>
+                  </div>
+                  <div className="text-[10px] font-bold text-[#606870] flex items-center gap-2 mt-0.5">
+                    <span>🪙 {coins} Moedas</span>
+                    <span>⭐ {xp} XP</span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-1 bg-[#ffffff] px-2 py-1 rounded-xl border border-[#c0c8d0] shadow-sm">
+                <span className="text-[9px] font-black text-[#505860] mr-0.5">INSÍGNIAS:</span>
+                <span className={`text-xs ${gymBadges.math_boulder ? "opacity-100" : "opacity-25 grayscale"}`} title="Matemática">📐</span>
+                <span className={`text-xs ${gymBadges.science_cascade ? "opacity-100" : "opacity-25 grayscale"}`} title="Ciências">🔬</span>
+                <span className={`text-xs ${gymBadges.portuguese_rainbow ? "opacity-100" : "opacity-25 grayscale"}`} title="Português">📚</span>
+                <span className={`text-xs ${gymBadges.english_thunder ? "opacity-100" : "opacity-25 grayscale"}`} title="Inglês">🇬🇧</span>
+              </div>
+            </div>
+
+            {/* Main Menu Grid */}
+            <div className="grid grid-cols-2 gap-2 text-xs font-black">
+              {/* Pokédex */}
+              <button
+                onClick={() => {
+                  setIsStartMenuOpen(false);
+                  setIsPokedexOpen(true);
+                }}
+                className="flex items-center gap-2 p-2.5 rounded-xl bg-white hover:bg-rose-50 border-2 border-[#c0c8d0] hover:border-rose-500 shadow-sm active:scale-95 transition text-left cursor-pointer group"
+              >
+                <div className="w-8 h-8 rounded-lg bg-rose-500 text-white flex items-center justify-center text-sm shadow">
+                  🔴
+                </div>
+                <div>
+                  <div className="text-[#202020] group-hover:text-rose-600 transition">Pokédex</div>
+                  <div className="text-[10px] font-bold text-[#707880]">
+                    {pokemonList.length}/151
+                  </div>
+                </div>
+              </button>
+
+              {/* Bolsa */}
+              <button
+                onClick={() => {
+                  setIsStartMenuOpen(false);
+                  setIsBagOpen(true);
+                }}
+                className="flex items-center gap-2 p-2.5 rounded-xl bg-white hover:bg-purple-50 border-2 border-[#c0c8d0] hover:border-purple-500 shadow-sm active:scale-95 transition text-left cursor-pointer group"
+              >
+                <div className="w-8 h-8 rounded-lg bg-purple-600 text-white flex items-center justify-center text-sm shadow">
+                  🎒
+                </div>
+                <div>
+                  <div className="text-[#202020] group-hover:text-purple-600 transition">Bolsa</div>
+                  <div className="text-[10px] font-bold text-[#707880]">
+                    {(inventory.pokeballs || 0) + (inventory.potions || 0) + (inventory.antidotes || 0) + (inventory.berries || 0)} itens
+                  </div>
+                </div>
+              </button>
+
+              {/* PokéCelular */}
+              <button
+                onClick={() => {
+                  setIsStartMenuOpen(false);
+                  setIsPhoneOpen(true);
+                }}
+                className="flex items-center gap-2 p-2.5 rounded-xl bg-white hover:bg-sky-50 border-2 border-[#c0c8d0] hover:border-sky-500 shadow-sm active:scale-95 transition text-left cursor-pointer group relative"
+              >
+                <div className="w-8 h-8 rounded-lg bg-sky-500 text-white flex items-center justify-center text-sm shadow">
+                  📱
+                </div>
+                <div>
+                  <div className="text-[#202020] group-hover:text-sky-600 transition">PokéCelular</div>
+                  <div className="text-[10px] font-bold text-[#707880]">
+                    {messages.length > 0 ? `${messages.length} recados` : "Mensagens"}
+                  </div>
+                </div>
+                {messages.length > 0 && (
+                  <span className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping" />
+                )}
+              </button>
+
+              {/* PokéMarket */}
+              <button
+                onClick={() => {
+                  setIsStartMenuOpen(false);
+                  setIsMarketOpen(true);
+                }}
+                className="flex items-center gap-2 p-2.5 rounded-xl bg-white hover:bg-blue-50 border-2 border-[#c0c8d0] hover:border-blue-500 shadow-sm active:scale-95 transition text-left cursor-pointer group"
+              >
+                <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center text-sm shadow">
+                  🏪
+                </div>
+                <div>
+                  <div className="text-[#202020] group-hover:text-blue-600 transition">PokéMarket</div>
+                  <div className="text-[10px] font-bold text-[#707880]">Comprar Bolas</div>
+                </div>
+              </button>
+
+              {/* Cabo Link / Troca com a Irmã */}
+              <button
+                onClick={() => {
+                  setIsStartMenuOpen(false);
+                  setIsTradeModalOpen(true);
+                }}
+                className="flex items-center gap-2 p-2.5 rounded-xl bg-white hover:bg-indigo-50 border-2 border-[#c0c8d0] hover:border-indigo-500 shadow-sm active:scale-95 transition text-left cursor-pointer group"
+              >
+                <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-sm shadow">
+                  🤝
+                </div>
+                <div>
+                  <div className="text-[#202020] group-hover:text-indigo-600 transition">Cabo Link</div>
+                  <div className="text-[10px] font-bold text-[#707880]">
+                    Troca c/ {activeProfileId === "cecilia" ? "Bianca" : "Cecília"}
+                  </div>
+                </div>
+              </button>
+
+              {/* Indigo Plateau Provas */}
+              <button
+                onClick={() => {
+                  setIsStartMenuOpen(false);
+                  setIsPlateauModalOpen(true);
+                }}
+                className="flex items-center gap-2 p-2.5 rounded-xl bg-white hover:bg-amber-50 border-2 border-[#c0c8d0] hover:border-amber-500 shadow-sm active:scale-95 transition text-left cursor-pointer group"
+              >
+                <div className="w-8 h-8 rounded-lg bg-amber-500 text-white flex items-center justify-center text-sm shadow">
+                  🏛️
+                </div>
+                <div>
+                  <div className="text-[#202020] group-hover:text-amber-600 transition">Indigo Plateau</div>
+                  <div className="text-[10px] font-bold text-amber-600 font-black">PROVAS 2X XP!</div>
+                </div>
+              </button>
+
+              {/* Rival Gary */}
+              <button
+                onClick={() => {
+                  setIsStartMenuOpen(false);
+                  setIsRivalModalOpen(true);
+                }}
+                className="flex items-center gap-2 p-2.5 rounded-xl bg-white hover:bg-orange-50 border-2 border-[#c0c8d0] hover:border-orange-500 shadow-sm active:scale-95 transition text-left cursor-pointer group"
+              >
+                <div className="w-8 h-8 rounded-lg bg-orange-500 text-white flex items-center justify-center text-sm shadow">
+                  ⚡
+                </div>
+                <div>
+                  <div className="text-[#202020] group-hover:text-orange-600 transition">Rival Gary</div>
+                  <div className="text-[10px] font-bold text-[#707880]">Desafios & Batalhas</div>
+                </div>
+              </button>
+
+              {/* Visual da Treinadora */}
+              <button
+                onClick={() => {
+                  setIsStartMenuOpen(false);
+                  setIsCustomizationOpen(true);
+                }}
+                className="flex items-center gap-2 p-2.5 rounded-xl bg-white hover:bg-pink-50 border-2 border-[#c0c8d0] hover:border-pink-500 shadow-sm active:scale-95 transition text-left cursor-pointer group"
+              >
+                <div className="w-8 h-8 rounded-lg bg-pink-500 text-white flex items-center justify-center text-sm shadow">
+                  👗
+                </div>
+                <div>
+                  <div className="text-[#202020] group-hover:text-pink-600 transition">Visual & Roupas</div>
+                  <div className="text-[10px] font-bold text-[#707880]">Personalizar Sprite</div>
+                </div>
+              </button>
+
+              {/* Rotas & Bloqueios Rocket */}
+              <button
+                onClick={() => {
+                  setIsStartMenuOpen(false);
+                  setShowRocketHudModal(true);
+                }}
+                className="flex items-center gap-2 p-2.5 rounded-xl bg-white hover:bg-emerald-50 border-2 border-[#c0c8d0] hover:border-emerald-500 shadow-sm active:scale-95 transition text-left cursor-pointer group"
+              >
+                <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center text-sm shadow">
+                  🗺️
+                </div>
+                <div>
+                  <div className="text-[#202020] group-hover:text-emerald-600 transition">Rotas & Mapa</div>
+                  <div className="text-[10px] font-bold text-[#707880]">Bloqueios Rocket</div>
+                </div>
+              </button>
+
+              {/* Nuvem & PIN dos Pais */}
+              <button
+                onClick={() => {
+                  setIsStartMenuOpen(false);
+                  setIsCloudSettingsOpen(true);
+                }}
+                className="flex items-center gap-2 p-2.5 rounded-xl bg-white hover:bg-slate-100 border-2 border-[#c0c8d0] hover:border-slate-500 shadow-sm active:scale-95 transition text-left cursor-pointer group"
+              >
+                <div className="w-8 h-8 rounded-lg bg-slate-700 text-white flex items-center justify-center text-sm shadow">
+                  ☁️
+                </div>
+                <div>
+                  <div className="text-[#202020] group-hover:text-slate-800 transition">Nuvem & PIN</div>
+                  <div className="text-[10px] font-bold text-[#707880]">Backup e Segurança</div>
+                </div>
+              </button>
+            </div>
+
+            {/* Bottom Utility Actions: Tela Cheia, Instalar PWA, Ajuda, Trocar Treinadora */}
+            <div className="mt-3 pt-2.5 border-t-2 border-[#d0d8e0] space-y-1.5">
+              <div className="grid grid-cols-2 gap-1.5">
+                <button
+                  onClick={() => {
+                    toggleFullscreen();
+                  }}
+                  className="py-1.5 px-2 bg-[#ffffff] hover:bg-[#e8ece8] border border-[#b0b8c0] rounded-xl text-[10px] font-black text-[#303840] flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer"
+                >
+                  {isFullscreen ? <Minimize className="w-3.5 h-3.5" /> : <Maximize className="w-3.5 h-3.5" />}
+                  <span>{isFullscreen ? "Sair Tela Cheia" : "Tela Cheia (100%)"}</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setIsStartMenuOpen(false);
+                    setShowHelp(true);
+                  }}
+                  className="py-1.5 px-2 bg-[#ffffff] hover:bg-[#e8ece8] border border-[#b0b8c0] rounded-xl text-[10px] font-black text-[#303840] flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer"
+                >
+                  <span>❓</span>
+                  <span>Como Jogar</span>
+                </button>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <div className="flex-1">
+                  <PwaInstallButton />
+                </div>
+                <button
+                  onClick={() => {
+                    setIsStartMenuOpen(false);
+                    setActiveProfileId(null);
+                  }}
+                  className="py-2 px-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-[11px] font-black flex items-center justify-center gap-1.5 transition shadow active:scale-95 cursor-pointer"
+                  title="Trocar Treinadora"
+                >
+                  <span>🔄</span>
+                  <span>Trocar Perfil</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Collapsible Rocket Blockade & Routes Modal (Replaces bottom scroll clutter) */}
+      {showRocketHudModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="w-full max-w-2xl bg-slate-900 border-2 border-rose-500/50 rounded-3xl p-5 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">🚀</span>
+                <h3 className="text-sm font-black uppercase tracking-wider text-rose-400">
+                  Bloqueios da Equipe Rocket &amp; Passagens das Cidades
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowRocketHudModal(false)}
+                className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold cursor-pointer"
+              >
+                Fechar ✕
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
+              {[
+                { key: "matematica", icon: "📐", label: "Matemática", open: unlockedRoutes.matematica },
+                { key: "ciencias", icon: "🔬", label: "Ciências", open: unlockedRoutes.ciencias },
+                { key: "portugues", icon: "📚", label: "Português", open: unlockedRoutes.portugues },
+                { key: "ingles", icon: "🇬🇧", label: "Inglês & Tech", open: unlockedRoutes.ingles },
+                { key: "biologia", icon: "🦁", label: "Biologia", open: unlockedRoutes.biologia },
+                { key: "quimica", icon: "🧪", label: "Química", open: unlockedRoutes.quimica },
+              ].map((r) => (
+                <div
+                  key={r.key}
+                  className={`p-2.5 rounded-xl border flex items-center justify-between ${
+                    r.open
+                      ? "bg-emerald-950/40 border-emerald-500/40 text-emerald-300"
+                      : "bg-rose-950/40 border-rose-500/40 text-rose-300"
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 font-bold">
+                    <span>{r.icon}</span>
+                    <span>{r.label}</span>
+                  </div>
+                  <span className="text-[10px] font-black uppercase px-1.5 py-0.5 rounded bg-black/40">
+                    {r.open ? "🔓 Aberta" : "🔒 Bloqueada"}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
               <button
                 onClick={() => {
                   triggerNewParentMessage();
+                  setShowRocketHudModal(false);
                 }}
-                className="text-[11px] font-bold text-sky-400 hover:text-sky-300 flex items-center gap-1 bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-700 transition cursor-pointer"
-                title="Simular nova mensagem do Papai ou Mamãe"
+                className="text-xs font-bold text-sky-400 hover:text-sky-300 flex items-center gap-1.5 bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700 cursor-pointer"
               >
-                <PhoneCall className="w-3 h-3 text-sky-400" />
+                <PhoneCall className="w-3.5 h-3.5" />
                 <span>Simular Mensagem 📱</span>
               </button>
-
               <button
                 onClick={() => {
                   playSfx("click");
@@ -6348,121 +7315,18 @@ export default function RpgPage() {
                     biologia: false,
                     quimica: false,
                   });
-                  setVictoryNotice("🔄 Todos os guardas da Equipe Rocket voltaram aos seus postos para novos treinos!");
+                  setShowRocketHudModal(false);
+                  setVictoryNotice("🔄 Todos os guardas da Equipe Rocket voltaram aos seus postos!");
                 }}
-                className="text-[11px] font-bold text-slate-400 hover:text-amber-400 flex items-center gap-1 bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-700 transition cursor-pointer"
+                className="text-xs font-bold text-slate-300 hover:text-amber-300 flex items-center gap-1.5 bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700 cursor-pointer"
               >
-                <RotateCcw className="w-3 h-3" />
+                <RotateCcw className="w-3.5 h-3.5" />
                 <span>Resetar Batalhas</span>
               </button>
             </div>
           </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 text-xs">
-            {/* Matemática */}
-            <div
-              className={`p-2 rounded-xl border flex items-center justify-between ${
-                unlockedRoutes.matematica
-                  ? "bg-emerald-950/40 border-emerald-500/40 text-emerald-300"
-                  : "bg-rose-950/40 border-rose-500/40 text-rose-300"
-              }`}
-            >
-              <div className="flex items-center gap-1.5 font-bold">
-                <span>📐</span>
-                <span>Matemática</span>
-              </div>
-              <span className="text-[10px] font-black uppercase px-1.5 py-0.5 rounded bg-black/40">
-                {unlockedRoutes.matematica ? "🔓 Aberta" : "🔒 Bloqueada"}
-              </span>
-            </div>
-
-            {/* Ciências */}
-            <div
-              className={`p-2 rounded-xl border flex items-center justify-between ${
-                unlockedRoutes.ciencias
-                  ? "bg-emerald-950/40 border-emerald-500/40 text-emerald-300"
-                  : "bg-rose-950/40 border-rose-500/40 text-rose-300"
-              }`}
-            >
-              <div className="flex items-center gap-1.5 font-bold">
-                <span>🔬</span>
-                <span>Ciências</span>
-              </div>
-              <span className="text-[10px] font-black uppercase px-1.5 py-0.5 rounded bg-black/40">
-                {unlockedRoutes.ciencias ? "🔓 Aberta" : "🔒 Bloqueada"}
-              </span>
-            </div>
-
-            {/* Português */}
-            <div
-              className={`p-2 rounded-xl border flex items-center justify-between ${
-                unlockedRoutes.portugues
-                  ? "bg-emerald-950/40 border-emerald-500/40 text-emerald-300"
-                  : "bg-rose-950/40 border-rose-500/40 text-rose-300"
-              }`}
-            >
-              <div className="flex items-center gap-1.5 font-bold">
-                <span>📚</span>
-                <span>Português</span>
-              </div>
-              <span className="text-[10px] font-black uppercase px-1.5 py-0.5 rounded bg-black/40">
-                {unlockedRoutes.portugues ? "🔓 Aberta" : "🔒 Bloqueada"}
-              </span>
-            </div>
-
-            {/* Inglês */}
-            <div
-              className={`p-2 rounded-xl border flex items-center justify-between ${
-                unlockedRoutes.ingles
-                  ? "bg-emerald-950/40 border-emerald-500/40 text-emerald-300"
-                  : "bg-rose-950/40 border-rose-500/40 text-rose-300"
-              }`}
-            >
-              <div className="flex items-center gap-1.5 font-bold">
-                <span>🇬🇧</span>
-                <span>Inglês & Tech</span>
-              </div>
-              <span className="text-[10px] font-black uppercase px-1.5 py-0.5 rounded bg-black/40">
-                {unlockedRoutes.ingles ? "🔓 Aberta" : "🔒 Bloqueada"}
-              </span>
-            </div>
-
-            {/* Biologia & Safari */}
-            <div
-              className={`p-2 rounded-xl border flex items-center justify-between ${
-                unlockedRoutes.biologia
-                  ? "bg-emerald-950/40 border-emerald-500/40 text-emerald-300"
-                  : "bg-rose-950/40 border-rose-500/40 text-rose-300"
-              }`}
-            >
-              <div className="flex items-center gap-1.5 font-bold">
-                <span>🦁</span>
-                <span>Biologia</span>
-              </div>
-              <span className="text-[10px] font-black uppercase px-1.5 py-0.5 rounded bg-black/40">
-                {unlockedRoutes.biologia ? "🔓 Aberta" : "🔒 Bloqueada"}
-              </span>
-            </div>
-
-            {/* Química & Fósseis */}
-            <div
-              className={`p-2 rounded-xl border flex items-center justify-between ${
-                unlockedRoutes.quimica
-                  ? "bg-emerald-950/40 border-emerald-500/40 text-emerald-300"
-                  : "bg-rose-950/40 border-rose-500/40 text-rose-300"
-              }`}
-            >
-              <div className="flex items-center gap-1.5 font-bold">
-                <span>🧪</span>
-                <span>Química</span>
-              </div>
-              <span className="text-[10px] font-black uppercase px-1.5 py-0.5 rounded bg-black/40">
-                {unlockedRoutes.quimica ? "🔓 Aberta" : "🔒 Bloqueada"}
-              </span>
-            </div>
-          </div>
         </div>
-      </main>
+      )}
 
       {/* Wild Pokemon Capture Modal */}
       {activeWildEncounter && (
@@ -6494,6 +7358,7 @@ export default function RpgPage() {
           onPetPokemon={handlePetPokemon}
           onOpenMarket={() => setIsMarketOpen(true)}
           onOpenRocketRescue={() => setIsRescueOpen(true)}
+          onUpdatePokemonList={(newList) => setPokemonList(newList)}
           onTriggerEvolution={(poke, targetId, method) => {
             setActiveEvolution({
               pokemon: poke,
@@ -6550,23 +7415,26 @@ export default function RpgPage() {
           currentProfile={currentProfile}
           activeQuest={activeQuest}
           messages={messages}
+          initialTab={phoneInitialTab}
+          onMapOpened={() => {
+            if (tutorialStepRef.current === 2) {
+              tutorialStepRef.current = 3;
+              setTutorialStep(3);
+              activateGpsRouteToTarget("portugues");
+            }
+          }}
           onNavigateToQuestCity={(citySubjectId) => {
             setIsPhoneOpen(false);
-            const questNames: Record<string, string> = {
-              matematica: "Metrópole da Matemática (Noroeste)",
-              ciencias: "Vale das Ciências (Nordeste)",
-              portugues: "Cidadela do Português (Sudoeste)",
-              ingles: "Distrito de Inglês & Tech (Sudeste)",
-            };
-            const hint = questNames[citySubjectId] || citySubjectId;
-            setActiveDialog({
-              speaker: "PokéCelular GPS 🧭",
-              role: "Navegação",
-              avatarSprite: "sign",
-              text: `Destino da missão marcado no mapa: siga para ${hint}!`,
-            });
+            activateGpsRouteToTarget(citySubjectId);
+            if (tutorialStepRef.current === 2) {
+              tutorialStepRef.current = 3;
+              setTutorialStep(3);
+            }
           }}
           sisterName={sisterName}
+          currentZoneName={currentZone}
+          completedSchoolChapters={completedSchoolChapters}
+          wildHuntQuota={wildHuntQuota}
         />
       )}
 
@@ -6613,7 +7481,12 @@ export default function RpgPage() {
             updateExplorerSkills({ ...explorerSkills, [skillId]: true });
             setCoins((c) => c + coinsWon);
             setXp((x) => x + xpWon);
-            setVictoryNotice(`🏆 Insígnia e Habilidade ${String(skillId).toUpperCase()} conquistadas com sucesso!`);
+            setWildHuntQuota((q) => {
+              const next = q + 5;
+              wildHuntQuotaRef.current = next;
+              return next;
+            });
+            setVictoryNotice(`🏆 Insígnia e Habilidade ${String(skillId).toUpperCase()} conquistadas com sucesso! (+5 Caças liberadas)`);
           }}
         />
       )}
@@ -6643,7 +7516,7 @@ export default function RpgPage() {
         <RivalChallengeModal
           isOpen={isRivalModalOpen}
           onClose={() => setIsRivalModalOpen(false)}
-          sisterName={sisterName}
+          sisterName={playerName}
           currentYear={currentYear}
           playerActivePokemon={pokemonList[0] || null}
           rivalConfig={rivalConfig}
@@ -6651,7 +7524,7 @@ export default function RpgPage() {
             setRivalConfig(config);
             try {
               localStorage.setItem("rpg_rival_config", JSON.stringify(config));
-            } catch {}
+            } catch { }
           }}
           onBattleVictory={handleRivalBattleVictory}
         />
@@ -6691,7 +7564,7 @@ export default function RpgPage() {
         <PokemonTradeModal
           isOpen={isTradeModalOpen}
           onClose={() => setIsTradeModalOpen(false)}
-          sisterName={sisterName}
+          sisterName={playerName}
           pokemonList={pokemonList}
           otherPlayerSync={otherPlayerSync}
           onCompleteTrade={(sentPokemonId, receivedPokemon, willEvolve) => {
@@ -6702,12 +7575,12 @@ export default function RpgPage() {
                 receivedPokemon.pokedexId === 64
                   ? 65
                   : receivedPokemon.pokedexId === 67
-                  ? 68
-                  : receivedPokemon.pokedexId === 75
-                  ? 76
-                  : receivedPokemon.pokedexId === 93
-                  ? 94
-                  : null;
+                    ? 68
+                    : receivedPokemon.pokedexId === 75
+                      ? 76
+                      : receivedPokemon.pokedexId === 93
+                        ? 94
+                        : null;
               if (tradeEvolutionTarget) {
                 setTimeout(() => {
                   setActiveEvolution({
@@ -6736,7 +7609,46 @@ export default function RpgPage() {
           onCompleteSimulado={(coinsReward, doubledExp, isDoubled) => {
             setCoins((c) => c + coinsReward);
             setXp((x) => x + doubledExp);
+            setWildHuntQuota((q) => {
+              const next = q + 8;
+              wildHuntQuotaRef.current = next;
+              return next;
+            });
             awardExpToTeam(doubledExp, isDoubled);
+          }}
+        />
+      )}
+
+      {/* Escola da Cidade Modal (Apresentação Lúdica do Capítulo antes dos Testes) */}
+      {isSchoolModalOpen && activeSchoolLesson && (
+        <CitySchoolModal
+          isOpen={isSchoolModalOpen}
+          onClose={() => setIsSchoolModalOpen(false)}
+          lesson={activeSchoolLesson}
+          studentName={playerName}
+          isAlreadyCompleted={completedSchoolChapters.includes(activeSchoolLesson.chapterId)}
+          onCompleteLesson={(chapterId, coinsEarned, xpEarned, huntQuotaBonus) => {
+            setIsSchoolModalOpen(false);
+            if (!completedSchoolChaptersRef.current.includes(chapterId)) {
+              const updated = [...completedSchoolChaptersRef.current, chapterId];
+              completedSchoolChaptersRef.current = updated;
+              setCompletedSchoolChapters(updated);
+            }
+            setCoins((c) => c + coinsEarned);
+            setXp((x) => x + xpEarned);
+            setWildHuntQuota((q) => {
+              const next = q + huntQuotaBonus;
+              wildHuntQuotaRef.current = next;
+              return next;
+            });
+            awardExpToActivePokemon(xpEarned);
+            if (tutorialStepRef.current === 3) {
+              tutorialStepRef.current = 4;
+              setTutorialStep(4);
+            }
+            setVictoryNotice(
+              `🏫 Aula concluída! Capítulo desbloqueado (+${coinsEarned} Moedas, +${xpEarned} EXP, +${huntQuotaBonus} Caças na grama alta!)`
+            );
           }}
         />
       )}
@@ -6761,29 +7673,29 @@ export default function RpgPage() {
         activeProfile={
           activeProfileId
             ? {
-                id: activeProfileId,
-                playerName: activeProfileId === "cecilia" ? "Cecília" : "Bianca",
-                year: currentYear,
-                pin: profilePin,
-                x: playerRef.current.gridX,
-                y: playerRef.current.gridY,
-                direction: playerRef.current.direction,
-                currentZone,
-                coins,
-                xp,
-                inventory,
-                pokemonList,
-                stolenPokemonList,
-                unlockedRoutes: unlockedRoutes as any,
-                explorerSkills,
-                gymBadges,
-                customization,
-                unlockedWardrobeItems,
-                activeQuest,
-                phoneMessages: messages,
-                rivalConfig,
-                updatedAt: new Date().toISOString(),
-              }
+              id: activeProfileId,
+              playerName: activeProfileId === "cecilia" ? "Cecília" : "Bianca",
+              year: currentYear,
+              pin: profilePin,
+              x: playerRef.current.gridX,
+              y: playerRef.current.gridY,
+              direction: playerRef.current.direction,
+              currentZone,
+              coins,
+              xp,
+              inventory,
+              pokemonList,
+              stolenPokemonList,
+              unlockedRoutes: unlockedRoutes as any,
+              explorerSkills,
+              gymBadges,
+              customization,
+              unlockedWardrobeItems,
+              activeQuest,
+              phoneMessages: messages,
+              rivalConfig,
+              updatedAt: new Date().toISOString(),
+            }
             : null
         }
         onPinUpdated={(newPin) => {

@@ -60,13 +60,14 @@ export const KANTO_BUILDINGS: KantoBuildingDef[] = [
   // 2. VIRIDIAN CITY (Metrópole do Saber)
   { id: "science_lab", type: "center", city: "Viridian City", name: "Centro Pokémon de Viridian", x0: 25, y0: 111, x1: 29, y1: 114, doorX: 27, doorY: 114, returnX: 27, returnY: 115 },
   { id: "pokemart", type: "mart", city: "Viridian City", name: "PokéMart de Viridian", x0: 39, y0: 111, x1: 43, y1: 114, doorX: 41, doorY: 114, returnX: 41, returnY: 115 },
-  { id: "math_academy", type: "center", city: "Viridian City", name: "Escola de Treinadores • Matemática", x0: 24, y0: 101, x1: 29, y1: 104, doorX: 26, doorY: 104, returnX: 26, returnY: 105 },
+  { id: "math_academy", type: "center", city: "Viridian City", name: "Escola da Cidade de Viridian • Matemática", x0: 24, y0: 101, x1: 29, y1: 104, doorX: 26, doorY: 104, returnX: 26, returnY: 105 },
   { id: "english_tower", type: "house", city: "Viridian City", name: "Ginásio de Viridian • English Hub", x0: 38, y0: 101, x1: 43, y1: 104, doorX: 40, doorY: 104, returnX: 40, returnY: 105 },
   { id: "portuguese_lib", type: "house", city: "Viridian City", name: "Grande Biblioteca Encantada", x0: 21, y0: 115, x1: 25, y1: 118, doorX: 23, doorY: 118, returnX: 23, returnY: 119 },
   { id: "insect_forest", type: "house", city: "Viridian City", name: "Portão da Floresta dos Insetos", x0: 32, y0: 90, x1: 36, y1: 92, doorX: 34, doorY: 92, returnX: 34, returnY: 93 },
 
   // 3. PEWTER CITY (Cidade das Rochas & Museu de Ciências)
   { id: "pewter_museum", type: "center", city: "Pewter City", name: "Museu de Ciências & Fósseis de Pewter", x0: 30, y0: 38, x1: 37, y1: 41, doorX: 34, doorY: 41, returnX: 34, returnY: 42 },
+  { id: "pewter_school", type: "center", city: "Pewter City", name: "Escola da Cidade de Pewter • Matemática", x0: 40, y0: 38, x1: 45, y1: 41, doorX: 42, doorY: 41, returnX: 42, returnY: 42 },
   { id: "pewter_gym", type: "center", city: "Pewter City", name: "Ginásio de Rocha de Pewter (Brock)", x0: 24, y0: 46, x1: 29, y1: 49, doorX: 27, doorY: 49, returnX: 27, returnY: 50 },
   { id: "pewter_center", type: "center", city: "Pewter City", name: "Centro Pokémon de Pewter", x0: 38, y0: 46, x1: 42, y1: 49, doorX: 40, doorY: 49, returnX: 40, returnY: 50 },
   { id: "pewter_mart", type: "mart", city: "Pewter City", name: "PokéMart de Pewter", x0: 44, y0: 46, x1: 48, y1: 49, doorX: 46, doorY: 49, returnX: 46, returnY: 50 },
@@ -79,17 +80,20 @@ export const KANTO_BUILDINGS: KantoBuildingDef[] = [
   { id: "cerulean_gym", type: "center", city: "Cerulean City", name: "Ginásio Aquático de Cerulean (Misty)", x0: 104, y0: 46, x1: 109, y1: 49, doorX: 106, doorY: 49, returnX: 106, returnY: 50 },
   { id: "bike_shop", type: "mart", city: "Cerulean City", name: "Loja Oficial de Bicicletas (Bike Shop)", x0: 112, y0: 46, x1: 116, y1: 49, doorX: 114, doorY: 49, returnX: 114, returnY: 50 },
   { id: "cerulean_center", type: "center", city: "Cerulean City", name: "Centro Pokémon de Cerulean", x0: 100, y0: 40, x1: 104, y1: 43, doorX: 102, doorY: 43, returnX: 102, returnY: 44 },
+  { id: "cerulean_school", type: "center", city: "Cerulean City", name: "Escola da Cidade de Cerulean • Ciências", x0: 106, y0: 40, x1: 110, y1: 43, doorX: 108, doorY: 43, returnX: 108, returnY: 44 },
   { id: "cerulean_mart", type: "mart", city: "Cerulean City", name: "PokéMart de Cerulean", x0: 118, y0: 40, x1: 122, y1: 43, doorX: 120, doorY: 43, returnX: 120, returnY: 44 },
   { id: "bill_cottage", type: "house", city: "Route 25", name: "Casa do Bill (Pesquisa Genética & Eevee)", x0: 126, y0: 14, x1: 131, y1: 17, doorX: 128, doorY: 17, returnX: 128, returnY: 18 },
 
   // 6. CELADON CITY (Grande Shopping & Botânica)
   { id: "celadon_dept_store", type: "mart", city: "Celadon City", name: "Grande Shopping de Celadon (5 Andares)", x0: 58, y0: 78, x1: 66, y1: 82, doorX: 62, doorY: 82, returnX: 62, returnY: 83 },
   { id: "celadon_gym", type: "center", city: "Celadon City", name: "Ginásio de Planta de Celadon (Erika)", x0: 62, y0: 88, x1: 67, y1: 91, doorX: 64, doorY: 91, returnX: 64, returnY: 92 },
+  { id: "celadon_school", type: "center", city: "Celadon City", name: "Escola da Cidade de Celadon • Português", x0: 70, y0: 88, x1: 75, y1: 91, doorX: 72, doorY: 91, returnX: 72, returnY: 92 },
   { id: "celadon_mansion", type: "house", city: "Celadon City", name: "Mansão de Celadon (Game Freak)", x0: 72, y0: 78, x1: 77, y1: 81, doorX: 74, doorY: 81, returnX: 74, returnY: 82 },
   { id: "celadon_center", type: "center", city: "Celadon City", name: "Centro Pokémon de Celadon", x0: 80, y0: 84, x1: 84, y1: 87, doorX: 82, doorY: 87, returnX: 82, returnY: 88 },
 
   // 7. SAFFRON CITY (Metrópole Central & Silph Co.)
   { id: "silph_co", type: "center", city: "Saffron City", name: "Edifício Corporativo Silph Co.", x0: 110, y0: 80, x1: 118, y1: 85, doorX: 114, doorY: 85, returnX: 114, returnY: 86 },
+  { id: "saffron_school", type: "center", city: "Saffron City", name: "Escola da Cidade de Saffron • Geografia", x0: 103, y0: 78, x1: 108, y1: 81, doorX: 105, doorY: 81, returnX: 105, returnY: 82 },
   { id: "saffron_gym", type: "center", city: "Saffron City", name: "Ginásio Psíquico de Saffron (Sabrina)", x0: 121, y0: 78, x1: 126, y1: 81, doorX: 123, doorY: 81, returnX: 123, returnY: 82 },
   { id: "fighting_dojo", type: "house", city: "Saffron City", name: "Dojo de Artes Marciais de Saffron", x0: 115, y0: 78, x1: 119, y1: 81, doorX: 117, doorY: 81, returnX: 117, returnY: 82 },
   { id: "saffron_center", type: "center", city: "Saffron City", name: "Centro Pokémon de Saffron", x0: 103, y0: 86, x1: 107, y1: 89, doorX: 105, doorY: 89, returnX: 105, returnY: 90 },
@@ -98,11 +102,13 @@ export const KANTO_BUILDINGS: KantoBuildingDef[] = [
   // 8. VERMILION CITY (Cidade Portuária & Navio S.S. Anne)
   { id: "vermilion_gym", type: "center", city: "Vermilion City", name: "Ginásio Elétrico de Vermilion (Lt. Surge)", x0: 104, y0: 122, x1: 109, y1: 125, doorX: 106, doorY: 125, returnX: 106, returnY: 126 },
   { id: "pokemon_fan_club", type: "house", city: "Vermilion City", name: "Clube dos Fãs de Pokémon", x0: 112, y0: 122, x1: 116, y1: 125, doorX: 114, doorY: 125, returnX: 114, returnY: 126 },
+  { id: "vermilion_school", type: "center", city: "Vermilion City", name: "Escola da Cidade de Vermilion • Inglês", x0: 118, y0: 122, x1: 123, y1: 125, doorX: 120, doorY: 125, returnX: 120, returnY: 126 },
   { id: "vermilion_center", type: "center", city: "Vermilion City", name: "Centro Pokémon de Vermilion", x0: 103, y0: 117, x1: 107, y1: 120, doorX: 105, doorY: 120, returnX: 105, returnY: 121 },
   { id: "vermilion_mart", type: "mart", city: "Vermilion City", name: "PokéMart de Vermilion", x0: 119, y0: 117, x1: 123, y1: 120, doorX: 121, doorY: 120, returnX: 121, returnY: 121 },
   { id: "ss_anne_dock", type: "house", city: "Vermilion City", name: "Cais do Porto • Navio Transatlântico S.S. Anne", x0: 110, y0: 131, x1: 116, y1: 134, doorX: 113, doorY: 134, returnX: 113, returnY: 135 },
 
   // 9. FUCHSIA CITY (Safari Zone / Biologia & Zoo)
+  { id: "fuchsia_school", type: "center", city: "Fuchsia City", name: "Escola da Cidade de Fuchsia • Inglês", x0: 100, y0: 138, x1: 105, y1: 141, doorX: 102, doorY: 141, returnX: 102, returnY: 142 },
   { id: "safari_zone_gate", type: "center", city: "Fuchsia City", name: "Safari Zone • Centro de Preservação & Biologia", x0: 108, y0: 138, x1: 115, y1: 141, doorX: 111, doorY: 141, returnX: 111, returnY: 142 },
   { id: "fuchsia_gym", type: "center", city: "Fuchsia City", name: "Ginásio de Veneno de Fuchsia (Koga)", x0: 98, y0: 147, x1: 103, y1: 150, doorX: 100, doorY: 150, returnX: 100, returnY: 151 },
   { id: "fuchsia_center", type: "center", city: "Fuchsia City", name: "Centro Pokémon de Fuchsia", x0: 106, y0: 147, x1: 110, y1: 150, doorX: 108, doorY: 150, returnX: 108, returnY: 151 },
@@ -113,6 +119,7 @@ export const KANTO_BUILDINGS: KantoBuildingDef[] = [
   { id: "cinnabar_gym", type: "center", city: "Cinnabar Island", name: "Ginásio Vulcânico de Cinnabar (Blaine)", x0: 35, y0: 167, x1: 40, y1: 170, doorX: 37, doorY: 170, returnX: 37, returnY: 171 },
   { id: "cinnabar_center", type: "center", city: "Cinnabar Island", name: "Centro Pokémon de Cinnabar", x0: 25, y0: 173, x1: 29, y1: 176, doorX: 27, doorY: 176, returnX: 27, returnY: 177 },
   { id: "cinnabar_mart", type: "mart", city: "Cinnabar Island", name: "PokéMart de Cinnabar", x0: 32, y0: 173, x1: 36, y1: 176, doorX: 34, doorY: 176, returnX: 34, returnY: 177 },
+  { id: "cinnabar_school", type: "center", city: "Cinnabar Island", name: "Escola da Cidade de Cinnabar • Ciências", x0: 38, y0: 173, x1: 43, y1: 176, doorX: 40, doorY: 176, returnX: 40, returnY: 177 },
 
   // 11. INDIGO PLATEAU (Cúpula dos Campeões / Provas Finais)
   { id: "indigo_plateau", type: "center", city: "Indigo Plateau", name: "Indigo Plateau • Palácio da Liga Pokémon", x0: 16, y0: 13, x1: 24, y1: 18, doorX: 20, doorY: 18, returnX: 20, returnY: 19 },

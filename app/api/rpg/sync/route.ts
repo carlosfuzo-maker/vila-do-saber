@@ -15,13 +15,24 @@ let activeTradeSession: {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+    if (body.resetAll) {
+      delete activePlayers["Bianca"];
+      delete activePlayers["Cecília"];
+      activeTradeSession = { biancaSlot: null, ceciliaSlot: null };
+      return NextResponse.json({ success: true, reset: true });
+    }
     const {
       sisterName,
       x,
       y,
+      drawX,
+      drawY,
       facing = "down",
       isMoving = false,
       isSurfing = false,
+      interiorId = null,
+      interiorFloor = null,
+      currentZone = "Pallet Town",
       customization,
       activePokemonName,
       tradeOffer,
@@ -37,11 +48,16 @@ export async function POST(request: Request) {
     // Update current player's state
     activePlayers[sisterName] = {
       sisterName,
-      x: typeof x === "number" ? x : 20,
-      y: typeof y === "number" ? y : 25,
+      x: typeof x === "number" ? x : 32,
+      y: typeof y === "number" ? y : 154,
+      drawX: typeof drawX === "number" ? drawX : typeof x === "number" ? x : 32,
+      drawY: typeof drawY === "number" ? drawY : typeof y === "number" ? y : 154,
       facing,
       isMoving: Boolean(isMoving),
       isSurfing: Boolean(isSurfing),
+      interiorId: interiorId || null,
+      interiorFloor: typeof interiorFloor === "number" ? interiorFloor : null,
+      currentZone: currentZone || "Pallet Town",
       customization,
       activePokemonName,
       lastSeen: now,
