@@ -6500,6 +6500,41 @@ export default function RpgPage() {
             </div>
           )}
 
+          {/* Floating PokéCelular Notification Toast with Direct "Criar Rota" Button */}
+          {phoneToast && (
+            <div className="w-full bg-gradient-to-r from-sky-600 via-indigo-600 to-sky-600 border-2 border-sky-300 text-white px-3 py-1.5 rounded-2xl shadow-2xl flex items-center justify-between gap-2 animate-bounce">
+              <div
+                onClick={() => {
+                  setPhoneToast(null);
+                  openPhoneIfAllowed("dad");
+                }}
+                className="flex items-center gap-2 cursor-pointer truncate"
+              >
+                <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-xs shrink-0">
+                  📱
+                </div>
+                <div className="truncate">
+                  <p className="text-[9px] font-black uppercase tracking-wider text-sky-200 truncate">
+                    {phoneToast.sender} no PokéCelular
+                  </p>
+                  <p className="text-[11px] font-extrabold truncate">{phoneToast.title}</p>
+                </div>
+              </div>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const target = phoneToast.targetId || activeQuest?.targetSubjectId || "viridian";
+                  setPhoneToast(null);
+                  activateGpsRouteToTarget(target);
+                  openPhoneIfAllowed("map");
+                }}
+                className="bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-[10px] px-2.5 py-1 rounded-xl shadow-md transition active:scale-95 shrink-0 cursor-pointer"
+              >
+                🗺️ Rota
+              </button>
+            </div>
+          )}
+
           {/* Compact 1-Line Mission Tutorial (Minimizable so it never blocks the map) */}
           {tutorialStep < 6 && (
             <div className="w-full bg-slate-950/85 backdrop-blur-md border border-amber-400/80 rounded-2xl px-3 py-1 shadow-xl flex items-center justify-between gap-1.5 text-[11px]">
@@ -6594,111 +6629,10 @@ export default function RpgPage() {
             <span>MENU</span>
           </button>
         </div>
-          <canvas
-            ref={canvasRef}
-            width={760}
-            height={480}
-            onClick={handleCanvasClick}
-            className="modern-hd-canvas w-full h-full object-contain cursor-pointer touch-none"
-          />
 
-          {/* Top-Left Overlay: Zone Banner + Camera Zoom Selector */}
-          <div className="absolute top-2.5 left-2.5 z-20 flex flex-col gap-1.5 items-start">
-            {zoneBanner && (
-              <div className="bg-slate-950/90 backdrop-blur-md border border-amber-500/60 rounded-xl px-3 py-1.5 shadow-xl flex items-center gap-2 animate-fade-in pointer-events-none">
-                <span className="text-lg">{zoneBanner.icon}</span>
-                <div>
-                  <p className="text-[11px] font-black uppercase tracking-wider text-amber-400">
-                    {zoneBanner.title}
-                  </p>
-                  <p className="text-[10px] text-slate-300">{zoneBanner.subtitle}</p>
-                </div>
-              </div>
-            )}
-
-            {/* Compact Zoom Selector */}
-            <div className="flex items-center gap-1 bg-slate-900/85 backdrop-blur-md border border-slate-700/80 px-2 py-1 rounded-xl shadow-lg">
-              <span className="text-[10px] font-black text-amber-400 select-none">🔍</span>
-              <button
-                onClick={() => {
-                  setCameraZoom(1.1);
-                  playSfx("click");
-                }}
-                className={`px-1.5 py-0.5 rounded text-[10px] font-black transition cursor-pointer ${
-                  Math.abs(cameraZoom - 1.1) < 0.05
-                    ? "bg-amber-500 text-slate-950"
-                    : "text-slate-300 hover:text-white"
-                }`}
-              >
-                1.1x
-              </button>
-              <button
-                onClick={() => {
-                  setCameraZoom(1.45);
-                  playSfx("click");
-                }}
-                className={`px-1.5 py-0.5 rounded text-[10px] font-black transition cursor-pointer ${
-                  Math.abs(cameraZoom - 1.45) < 0.05
-                    ? "bg-amber-500 text-slate-950"
-                    : "text-slate-300 hover:text-white"
-                }`}
-              >
-                1.45x
-              </button>
-              <button
-                onClick={() => {
-                  setCameraZoom(1.8);
-                  playSfx("click");
-                }}
-                className={`px-1.5 py-0.5 rounded text-[10px] font-black transition cursor-pointer ${
-                  Math.abs(cameraZoom - 1.8) < 0.05
-                    ? "bg-amber-500 text-slate-950"
-                    : "text-slate-300 hover:text-white"
-                }`}
-              >
-                1.8x
-              </button>
-            </div>
-          </div>
-
-          {/* Top-Right Overlay: Floating PokéCelular Notification Toast with Direct "Criar Rota" Button */}
-          {phoneToast && (
-            <div className="absolute top-2.5 right-2.5 z-20 bg-gradient-to-r from-sky-600 to-indigo-700 border-2 border-sky-300 text-white px-3 py-1.5 rounded-2xl shadow-2xl flex items-center gap-2 animate-bounce">
-              <div
-                onClick={() => {
-                  setPhoneToast(null);
-                  openPhoneIfAllowed("dad");
-                }}
-                className="flex items-center gap-2 cursor-pointer"
-              >
-                <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-base">
-                  📱
-                </div>
-                <div>
-                  <p className="text-[9px] font-black uppercase tracking-wider text-sky-200">
-                    {phoneToast.sender} no PokéCelular
-                  </p>
-                  <p className="text-[11px] font-extrabold">{phoneToast.title}</p>
-                </div>
-              </div>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const target = phoneToast.targetId || activeQuest?.targetSubjectId || "viridian";
-                  setPhoneToast(null);
-                  activateGpsRouteToTarget(target);
-                  openPhoneIfAllowed("map");
-                }}
-                className="bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-[10px] px-2 py-1 rounded-xl shadow-md transition active:scale-95 shrink-0 cursor-pointer"
-              >
-                🗺️ Criar Rota
-              </button>
-            </div>
-          )}
-
-          {/* LEFT THUMB ZONE (Ergonomic Landscape Tablet Virtual Analog Joystick) */}
-          <div
-            ref={joystickBaseRef}
+        {/* LEFT THUMB ZONE (Ergonomic Landscape Tablet Virtual Analog Joystick) */}
+        <div
+          ref={joystickBaseRef}
             className="absolute bottom-3 left-3 sm:bottom-6 sm:left-6 md:bottom-8 md:left-8 z-30 select-none touch-none"
             onTouchStart={(e) => {
               e.preventDefault();
