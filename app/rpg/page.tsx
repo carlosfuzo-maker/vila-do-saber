@@ -3421,6 +3421,19 @@ export default function RpgPage() {
 
   // Handle interaction with whatever the player is facing
   const handleInteract = useCallback(() => {
+    // If a dialog is open, pressing A / Action advances or closes it immediately
+    if (activeDialog) {
+      if (activeDialog.actionButton) {
+        const act = activeDialog.actionButton;
+        setActiveDialog(null);
+        act.onClick();
+        return;
+      }
+      playSfx("pop");
+      setActiveDialog(null);
+      return;
+    }
+
     const p = playerRef.current;
     let targetX = p.gridX;
     let targetY = p.gridY;
@@ -4298,6 +4311,7 @@ export default function RpgPage() {
     stolenPokemonList.length,
     pokemonList.length,
     playerName,
+    activeDialog,
     activeInterior,
     handleExitInterior,
     enterWalkableInterior,
@@ -6271,9 +6285,14 @@ export default function RpgPage() {
     }
   };
 
-  // Virtual D-Pad Touch Handlers
-  const handleDpadPress = (dir: Direction) => {
-    if (
+  // Virtual Analog Joystick State for Tablet / Mobile Landscape Handheld Play
+  const [joystickOffset, setJoystickOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [activeJoystickDir, setActiveJoystickDir] = useState<Direction | null>(null);
+  const joystickBaseRef = useRef<HTMLDivElement | null>(null);
+  const isJoystickTouchingRef = useRef<boolean>(false);
+
+  const isMovementBlocked = () => {
+    return (
       activeBattle?.isOpen ||
       isPhoneOpen ||
       isBagOpen ||
@@ -6289,17 +6308,85 @@ export default function RpgPage() {
       isTradeModalOpen ||
       isExamModalOpen ||
       isCloudSettingsOpen ||
-      showHelp
-    ) {
+      showHelp ||
+      isStartMenuOpen
+    );
+  };
+
+  const handleJoystickStart = (clientX: number, clientY: number) => {
+    if (isMovementBlocked()) return;
+    isJoystickTouchingRef.current = true;
+    handleJoystickMove(clientX, clientY);
+  };
+
+  const handleJoystickMove = (clientX: number, clientY: number) => {
+    if (!isJoystickTouchingRef.current || !joystickBaseRef.current) return;
+    const rect = joystickBaseRef.current.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+
+    const dx = clientX - centerX;
+    const dy = clientY - centerY;
+    const distance = Math.hypot(dx, dy);
+    const maxRadius = rect.width * 0.32;
+
+    let clampedX = dx;
+    let clampedY = dy;
+    if (distance > maxRadius) {
+      clampedX = (dx / distance) * maxRadius;
+      clampedY = (dy / distance) * maxRadius;
+    }
+
+    setJoystickOffset({ x: clampedX, y: clampedY });
+
+    // Dead zone of 10px
+    if (distance < 10) {
+      touchDirection.current = null;
+      setActiveJoystickDir(null);
+      return;
+    }
+
+    const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+    let newDir: Direction;
+    if (angle >= -45 && angle <= 45) {
+      newDir = "right";
+    } else if (angle > 45 && angle < 135) {
+      newDir = "down";
+    } else if (angle >= -135 && angle < -45) {
+      newDir = "up";
+    } else {
+      newDir = "left";
+    }
+
+    if (touchDirection.current !== newDir) {
+      touchDirection.current = newDir;
+      targetMoveTile.current = null;
+      setActiveJoystickDir(newDir);
+      playSfx("pop");
+    }
+  };
+
+  const handleJoystickEnd = () => {
+    isJoystickTouchingRef.current = false;
+    setJoystickOffset({ x: 0, y: 0 });
+    setActiveJoystickDir(null);
+    touchDirection.current = null;
+  };
+
+  // Virtual D-Pad Touch Handlers
+  const handleDpadPress = (dir: Direction) => {
+    if (isMovementBlocked()) {
       return;
     }
     touchDirection.current = dir;
     targetMoveTile.current = null;
+    setActiveJoystickDir(dir);
     playSfx("pop");
   };
 
   const handleDpadRelease = () => {
     touchDirection.current = null;
+    setActiveJoystickDir(null);
   };
 
   const currentProfile: StudentProfile = {
@@ -6609,88 +6696,168 @@ export default function RpgPage() {
             </div>
           )}
 
-          {/* LEFT THUMB ZONE (Ergonomic Landscape Tablet D-Pad) */}
-          <div className="absolute bottom-2.5 left-2.5 sm:bottom-4 sm:left-4 z-20 flex items-center">
-            <div className="relative w-28 h-28 sm:w-32 sm:h-32 bg-slate-950/75 backdrop-blur-md border-2 border-slate-600/80 rounded-full p-2 flex items-center justify-center shadow-2xl">
-              {/* UP */}
+          {/* LEFT THUMB ZONE (Ergonomic Landscape Tablet Virtual Analog Joystick) */}
+          <div
+            ref={joystickBaseRef}
+            className="absolute bottom-3 left-3 sm:bottom-6 sm:left-6 md:bottom-8 md:left-8 z-30 select-none touch-none"
+            onTouchStart={(e) => {
+              e.preventDefault();
+              if (e.touches.length > 0) {
+                handleJoystickStart(e.touches[0].clientX, e.touches[0].clientY);
+              }
+            }}
+            onTouchMove={(e) => {
+              e.preventDefault();
+              if (e.touches.length > 0) {
+                handleJoystickMove(e.touches[0].clientX, e.touches[0].clientY);
+              }
+            }}
+            onTouchEnd={(e) => {
+              e.preventDefault();
+              handleJoystickEnd();
+            }}
+            onTouchCancel={(e) => {
+              e.preventDefault();
+              handleJoystickEnd();
+            }}
+            onMouseDown={(e) => {
+              handleJoystickStart(e.clientX, e.clientY);
+            }}
+            onMouseMove={(e) => {
+              if (e.buttons === 1) {
+                handleJoystickMove(e.clientX, e.clientY);
+              }
+            }}
+            onMouseUp={handleJoystickEnd}
+            onMouseLeave={handleJoystickEnd}
+          >
+            {/* Joystick Base Outer Ring */}
+            <div className="relative w-36 h-36 sm:w-44 sm:h-44 bg-slate-950/85 backdrop-blur-md border-4 border-slate-600/90 rounded-full shadow-[0_12px_32px_rgba(0,0,0,0.85)] flex items-center justify-center">
+              {/* Direction Indicator: UP */}
               <button
-                onMouseDown={() => handleDpadPress("up")}
+                type="button"
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  handleDpadPress("up");
+                }}
                 onMouseUp={handleDpadRelease}
                 onTouchStart={(e) => {
-                  e.preventDefault();
+                  e.stopPropagation();
                   handleDpadPress("up");
                 }}
                 onTouchEnd={(e) => {
-                  e.preventDefault();
+                  e.stopPropagation();
                   handleDpadRelease();
                 }}
-                className="absolute top-1.5 left-1/2 -translate-x-1/2 w-9 h-9 sm:w-10 sm:h-10 bg-slate-800/95 active:bg-blue-600 text-slate-100 rounded-t-xl border-t-2 border-x-2 border-slate-500 flex items-center justify-center font-black text-sm shadow-md active:scale-95 transition"
-                title="Mover para Cima"
+                className={`absolute top-1.5 left-1/2 -translate-x-1/2 w-9 h-8 sm:w-11 sm:h-9 rounded-t-xl flex items-center justify-center font-black text-xs sm:text-sm cursor-pointer transition active:scale-95 ${
+                  activeJoystickDir === "up"
+                    ? "text-emerald-400 bg-emerald-950/60 drop-shadow-[0_0_10px_#34d399]"
+                    : "text-slate-300 hover:text-white"
+                }`}
+                title="Cima"
               >
                 ▲
               </button>
 
-              {/* DOWN */}
+              {/* Direction Indicator: DOWN */}
               <button
-                onMouseDown={() => handleDpadPress("down")}
+                type="button"
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  handleDpadPress("down");
+                }}
                 onMouseUp={handleDpadRelease}
                 onTouchStart={(e) => {
-                  e.preventDefault();
+                  e.stopPropagation();
                   handleDpadPress("down");
                 }}
                 onTouchEnd={(e) => {
-                  e.preventDefault();
+                  e.stopPropagation();
                   handleDpadRelease();
                 }}
-                className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-9 h-9 sm:w-10 sm:h-10 bg-slate-800/95 active:bg-blue-600 text-slate-100 rounded-b-xl border-b-2 border-x-2 border-slate-500 flex items-center justify-center font-black text-sm shadow-md active:scale-95 transition"
-                title="Mover para Baixo"
+                className={`absolute bottom-1.5 left-1/2 -translate-x-1/2 w-9 h-8 sm:w-11 sm:h-9 rounded-b-xl flex items-center justify-center font-black text-xs sm:text-sm cursor-pointer transition active:scale-95 ${
+                  activeJoystickDir === "down"
+                    ? "text-emerald-400 bg-emerald-950/60 drop-shadow-[0_0_10px_#34d399]"
+                    : "text-slate-300 hover:text-white"
+                }`}
+                title="Baixo"
               >
                 ▼
               </button>
 
-              {/* LEFT */}
+              {/* Direction Indicator: LEFT */}
               <button
-                onMouseDown={() => handleDpadPress("left")}
+                type="button"
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  handleDpadPress("left");
+                }}
                 onMouseUp={handleDpadRelease}
                 onTouchStart={(e) => {
-                  e.preventDefault();
+                  e.stopPropagation();
                   handleDpadPress("left");
                 }}
                 onTouchEnd={(e) => {
-                  e.preventDefault();
+                  e.stopPropagation();
                   handleDpadRelease();
                 }}
-                className="absolute left-1.5 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-10 sm:h-10 bg-slate-800/95 active:bg-blue-600 text-slate-100 rounded-l-xl border-l-2 border-y-2 border-slate-500 flex items-center justify-center font-black text-sm shadow-md active:scale-95 transition"
-                title="Mover para Esquerda"
+                className={`absolute left-1.5 top-1/2 -translate-y-1/2 w-8 h-9 sm:w-9 sm:h-11 rounded-l-xl flex items-center justify-center font-black text-xs sm:text-sm cursor-pointer transition active:scale-95 ${
+                  activeJoystickDir === "left"
+                    ? "text-emerald-400 bg-emerald-950/60 drop-shadow-[0_0_10px_#34d399]"
+                    : "text-slate-300 hover:text-white"
+                }`}
+                title="Esquerda"
               >
                 ◀
               </button>
 
-              {/* RIGHT */}
+              {/* Direction Indicator: RIGHT */}
               <button
-                onMouseDown={() => handleDpadPress("right")}
+                type="button"
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  handleDpadPress("right");
+                }}
                 onMouseUp={handleDpadRelease}
                 onTouchStart={(e) => {
-                  e.preventDefault();
+                  e.stopPropagation();
                   handleDpadPress("right");
                 }}
                 onTouchEnd={(e) => {
-                  e.preventDefault();
+                  e.stopPropagation();
                   handleDpadRelease();
                 }}
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-10 sm:h-10 bg-slate-800/95 active:bg-blue-600 text-slate-100 rounded-r-xl border-r-2 border-y-2 border-slate-500 flex items-center justify-center font-black text-sm shadow-md active:scale-95 transition"
-                title="Mover para Direita"
+                className={`absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-9 sm:w-9 sm:h-11 rounded-r-xl flex items-center justify-center font-black text-xs sm:text-sm cursor-pointer transition active:scale-95 ${
+                  activeJoystickDir === "right"
+                    ? "text-emerald-400 bg-emerald-950/60 drop-shadow-[0_0_10px_#34d399]"
+                    : "text-slate-300 hover:text-white"
+                }`}
+                title="Direita"
               >
                 ▶
               </button>
 
-              {/* Tactile Center Pivot */}
-              <div className="w-5 h-5 bg-slate-900 rounded-full border border-slate-700 shadow-inner" />
+              {/* Inner Tactile Track Ring */}
+              <div className="w-20 h-20 sm:w-26 sm:h-26 rounded-full border-2 border-dashed border-slate-700/60 flex items-center justify-center pointer-events-none" />
+
+              {/* Central Floating Analog Thumb-Stick Knob */}
+              <div
+                className="absolute w-14 h-14 sm:w-16 sm:h-16 rounded-full border-2 border-slate-400/80 shadow-[0_8px_18px_rgba(0,0,0,0.8)] flex items-center justify-center pointer-events-none transition-transform duration-75"
+                style={{
+                  transform: `translate(${joystickOffset.x}px, ${joystickOffset.y}px)`,
+                  background: "radial-gradient(circle at 35% 30%, #475569 0%, #1e293b 65%, #0f172a 100%)",
+                }}
+              >
+                {/* Thumb-grip concentric ridges */}
+                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-slate-500/70 bg-slate-900/60 flex items-center justify-center">
+                  <div className="w-3.5 h-3.5 rounded-full bg-slate-600/80 shadow-inner" />
+                </div>
+              </div>
             </div>
           </div>
 
           {/* CENTER-BOTTOM STATUS & QUICK EXIT PILL */}
-          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-20 hidden md:flex flex-col items-center gap-1 max-w-md pointer-events-auto">
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-20 hidden lg:flex flex-col items-center gap-1 max-w-md pointer-events-auto">
             <div className="bg-slate-950/85 backdrop-blur-md border border-slate-700/90 px-3 py-1 rounded-2xl shadow-xl flex items-center gap-2 text-[11px]">
               {activeInterior ? (
                 <>
@@ -6764,11 +6931,11 @@ export default function RpgPage() {
             </div>
           </div>
 
-          {/* RIGHT THUMB ZONE (Ergonomic Landscape Tablet Action Pad: Bolsa, Celular, B, A) */}
-          <div className="absolute bottom-2.5 right-2.5 sm:bottom-4 sm:right-4 z-20 flex flex-col items-end gap-2">
-            {/* Quick Interior Exit Button on Mobile/Small screens */}
+          {/* RIGHT THUMB ZONE (Ergonomic Landscape Tablet Action Cluster) */}
+          <div className="absolute bottom-3 right-3 sm:bottom-6 sm:right-6 md:bottom-8 md:right-8 z-30 select-none touch-none flex flex-col items-end gap-2">
+            {/* Quick Interior Exit / Stairs Button (Right above right thumb) */}
             {activeInterior && (
-              <div className="flex md:hidden items-center gap-1.5">
+              <div className="flex items-center gap-1.5 animate-in fade-in slide-in-from-top-1">
                 {activeInterior.buildingId === "family_house" && activeInterior.floor === 2 ? (
                   <button
                     onClick={() => {
@@ -6792,81 +6959,94 @@ export default function RpgPage() {
                         }, 350);
                       }
                     }}
-                    className="px-2.5 py-1 rounded-full bg-amber-500 text-slate-950 text-[10px] font-black shadow-lg"
+                    className="px-3.5 py-1.5 rounded-full bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black shadow-xl border border-amber-300 active:scale-95 cursor-pointer flex items-center gap-1.5"
                   >
-                    🪜 Descer Escada
+                    <span>🪜</span>
+                    <span>Descer Escada</span>
                   </button>
                 ) : (
                   <button
                     onClick={handleExitInterior}
-                    className="px-2.5 py-1 rounded-full bg-rose-600 text-white text-[10px] font-black shadow-lg"
+                    className="px-3.5 py-1.5 rounded-full bg-rose-600 hover:bg-rose-500 text-white text-xs font-black shadow-xl border border-rose-400 active:scale-95 cursor-pointer flex items-center gap-1.5"
                   >
-                    🚪 Sair
+                    <span>🚪</span>
+                    <span>Sair da Sala</span>
                   </button>
                 )}
               </div>
             )}
 
-            <div className="flex items-center gap-2 bg-slate-950/75 backdrop-blur-md border-2 border-slate-600/80 px-2.5 py-2 rounded-3xl shadow-2xl">
-              {/* Bolsa Touch Button */}
-              <button
-                onClick={() => {
-                  setIsBagOpen(true);
-                  playSfx("open");
-                }}
-                className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl gba-btn-sub-tactile flex flex-col items-center justify-center text-white cursor-pointer"
-                title="Abrir Bolsa de Itens e Pokémon"
-              >
-                <span className="text-xs">🎒</span>
-                <span className="text-[7px] font-black uppercase text-sky-200">Bolsa</span>
-              </button>
+            {/* Handheld Ergonomic Controller Housing for Right Hand */}
+            <div className="relative p-2.5 sm:p-3 bg-slate-950/85 backdrop-blur-md border-4 border-slate-600/90 rounded-3xl shadow-[0_12px_32px_rgba(0,0,0,0.85)] flex flex-col gap-2.5">
+              {/* Top Row: Auxiliary Quick Buttons (Bolsa & Celular) */}
+              <div className="flex items-center justify-end gap-2.5 pr-1">
+                {/* Bolsa */}
+                <button
+                  onClick={() => {
+                    setIsBagOpen(true);
+                    playSfx("open");
+                  }}
+                  className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl gba-btn-sub-tactile flex flex-col items-center justify-center text-white cursor-pointer active:scale-95 transition"
+                  title="Abrir Bolsa de Itens e Pokémon"
+                >
+                  <span className="text-xs sm:text-sm">🎒</span>
+                  <span className="text-[7.5px] font-black uppercase text-sky-200">Bolsa</span>
+                </button>
 
-              {/* PokéCelular Touch Button */}
-              <button
-                onClick={openPhoneIfAllowed}
-                className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl gba-btn-sub-tactile flex flex-col items-center justify-center text-white cursor-pointer relative"
-                title="Abrir PokéCelular"
-              >
-                <Smartphone className="w-3.5 h-3.5 text-sky-200" />
-                <span className="text-[7px] font-black uppercase text-sky-200">Celular</span>
-                {hasUnreadPhone && (
-                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500 absolute -top-1 -right-1 border border-white animate-ping" />
-                )}
-              </button>
+                {/* PokéCelular */}
+                <button
+                  onClick={openPhoneIfAllowed}
+                  className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl gba-btn-sub-tactile flex flex-col items-center justify-center text-white cursor-pointer relative active:scale-95 transition"
+                  title="Abrir PokéCelular"
+                >
+                  <Smartphone className="w-3.5 h-3.5 text-sky-200" />
+                  <span className="text-[7.5px] font-black uppercase text-sky-200">Celular</span>
+                  {hasUnreadPhone && (
+                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500 absolute -top-1 -right-1 border border-white animate-ping" />
+                  )}
+                </button>
+              </div>
 
-              {/* B Button: Run / Cancel */}
-              <button
-                onMouseDown={() => {
-                  playerRef.current.isRunning = true;
-                }}
-                onMouseUp={() => {
-                  playerRef.current.isRunning = false;
-                }}
-                onTouchStart={(e) => {
-                  e.preventDefault();
-                  playerRef.current.isRunning = true;
-                  playSfx("pop");
-                }}
-                onTouchEnd={(e) => {
-                  e.preventDefault();
-                  playerRef.current.isRunning = false;
-                }}
-                className="w-12 h-12 sm:w-13 sm:h-13 rounded-full gba-btn-b-tactile flex flex-col items-center justify-center text-slate-100 cursor-pointer"
-                title="Correr (B)"
-              >
-                <span className="font-black text-sm">B</span>
-                <span className="text-[7.5px] font-bold uppercase tracking-wider text-slate-300">Correr</span>
-              </button>
+              {/* Bottom Main Action Buttons: B and A (Natural 45° angle for thumb reach) */}
+              <div className="flex items-end gap-3 pt-0.5">
+                {/* Botão B (Correr / Cancelar): Lower-Left of Thumb */}
+                <button
+                  onMouseDown={() => {
+                    playerRef.current.isRunning = true;
+                  }}
+                  onMouseUp={() => {
+                    playerRef.current.isRunning = false;
+                  }}
+                  onTouchStart={(e) => {
+                    e.preventDefault();
+                    playerRef.current.isRunning = true;
+                    playSfx("pop");
+                  }}
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
+                    playerRef.current.isRunning = false;
+                  }}
+                  className="w-13 h-13 sm:w-15 sm:h-15 rounded-full gba-btn-b-tactile flex flex-col items-center justify-center text-slate-100 cursor-pointer active:scale-95 transition shadow-lg"
+                  title="Correr (B)"
+                >
+                  <span className="font-black text-base sm:text-lg">B</span>
+                  <span className="text-[7.5px] font-black uppercase tracking-wider text-slate-300">Correr</span>
+                </button>
 
-              {/* A Button: Action / Interact */}
-              <button
-                onClick={handleInteract}
-                className="w-13 h-13 sm:w-14 sm:h-14 rounded-full gba-btn-a-tactile flex flex-col items-center justify-center text-white cursor-pointer"
-                title="Ação / Interagir (A)"
-              >
-                <span className="font-black text-base">A</span>
-                <span className="text-[8px] font-black uppercase tracking-wider text-rose-100">Ação</span>
-              </button>
+                {/* Botão A (Ação / Interagir / Confirmar): Upper-Right of Thumb */}
+                <button
+                  onClick={handleInteract}
+                  onTouchStart={(e) => {
+                    e.preventDefault();
+                    handleInteract();
+                  }}
+                  className="w-16 h-16 sm:w-18 sm:h-18 rounded-full gba-btn-a-tactile flex flex-col items-center justify-center text-white cursor-pointer active:scale-95 transition shadow-2xl"
+                  title="Ação / Interagir (A)"
+                >
+                  <span className="font-black text-xl sm:text-2xl leading-none">A</span>
+                  <span className="text-[8.5px] font-black uppercase tracking-wider text-rose-100 mt-0.5">Ação</span>
+                </button>
+              </div>
             </div>
           </div>
 
