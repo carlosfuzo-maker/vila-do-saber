@@ -1,15 +1,19 @@
 {
+  "$schema": "https://json.schemastore.org/web-manifest-combined.json",
+  "id": "/rpg",
   "name": "Vila do Saber • Pokémon FireRed RPG",
   "short_name": "Vila do Saber",
   "description": "Mundo RPG Escolar de Bianca e Cecília - Pokémon FireRed Edition",
   "start_url": "/rpg",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui", "window-controls-overlay"],
   "orientation": "any",
   "background_color": "#020617",
   "theme_color": "#dc2626",
   "categories": ["education", "games", "kids"],
   "lang": "pt-BR",
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/icon-192.png",
@@ -43,4 +47,3 @@
     }
   ]
 }
-

@@ -175,7 +175,7 @@ import {
   getSupabaseClient,
   getDefaultProfileSave,
 } from "@/lib/supabaseClient";
-import { PwaInstallButton } from "../components/PwaManager";
+import { PwaInstallButton, PwaInstallBanner } from "../components/PwaManager";
 import { STUDENT_PROFILES, INITIAL_EXAMS, SUBJECTS_YEAR_2, SUBJECTS_YEAR_4 } from "../vila/data";
 import { StudentProfile, PhoneMessage, ActiveStoryQuest, ExamAlert } from "../vila/types";
 import {
@@ -6419,6 +6419,9 @@ export default function RpgPage() {
 
   return (
     <div className="fixed inset-0 w-screen h-screen overflow-hidden bg-slate-950 text-slate-100 flex items-center justify-center font-sans select-none">
+      {/* Automatic Floating PWA Install Banner for Tablets (if not yet installed) */}
+      <PwaInstallBanner />
+
       {/* 100% Fullscreen Handheld Console Game Viewport */}
       <div className="relative w-full h-full bg-slate-950 flex items-center justify-center overflow-hidden">
         {/* Interactive Game Canvas (Fills entire screen ergonomically) */}
@@ -6615,6 +6618,9 @@ export default function RpgPage() {
           >
             {isFullscreen ? <Minimize className="w-3.5 h-3.5" /> : <Maximize className="w-3.5 h-3.5" />}
           </button>
+
+          {/* Direct PWA Install Button (Always visible on HUD if not yet standalone) */}
+          <PwaInstallButton compact />
 
           {/* Classic GBA START MENU BUTTON */}
           <button
