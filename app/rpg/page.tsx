@@ -4520,6 +4520,28 @@ export default function RpgPage() {
     openPhoneIfAllowed,
   ]);
 
+  // Prevent tablet long-press context menu / text selection on game canvas & controls
+  useEffect(() => {
+    const handleGlobalContextMenu = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (
+        target?.closest(".gamepad-no-callout") ||
+        target?.closest("canvas") ||
+        target?.tagName === "CANVAS" ||
+        target?.closest(".touch-none")
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+      }
+    };
+
+    window.addEventListener("contextmenu", handleGlobalContextMenu, { capture: true });
+    return () => {
+      window.removeEventListener("contextmenu", handleGlobalContextMenu, { capture: true });
+    };
+  }, []);
+
   // Main 60 FPS Game Loop
   useEffect(() => {
     let animationFrameId: number;
@@ -6512,7 +6534,11 @@ export default function RpgPage() {
           width={760}
           height={480}
           onClick={handleCanvasClick}
-          className="modern-hd-canvas w-full h-full object-contain cursor-pointer touch-none"
+          onContextMenu={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          className="modern-hd-canvas w-full h-full object-contain cursor-pointer touch-none select-none gamepad-no-callout"
         />
 
         {/* TOP-LEFT MINIMAL HUD OVERLAY (Semi-transparent, zero height impact) */}
@@ -6743,162 +6769,257 @@ export default function RpgPage() {
         {/* LEFT THUMB ZONE (Ergonomic Landscape Tablet Virtual Analog Joystick) */}
         <div
           ref={joystickBaseRef}
-            className="absolute bottom-3 left-3 sm:bottom-6 sm:left-6 md:bottom-8 md:left-8 z-30 select-none touch-none"
-            onTouchStart={(e) => {
+          onContextMenu={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          className="absolute bottom-3 left-3 sm:bottom-6 sm:left-6 md:bottom-8 md:left-8 z-30 select-none touch-none gamepad-no-callout"
+          style={{ WebkitTouchCallout: "none", userSelect: "none" }}
+          onTouchStart={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (e.touches.length > 0) {
+              handleJoystickStart(e.touches[0].clientX, e.touches[0].clientY);
+            }
+          }}
+          onTouchMove={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (e.touches.length > 0) {
+              handleJoystickMove(e.touches[0].clientX, e.touches[0].clientY);
+            }
+          }}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleJoystickEnd();
+          }}
+          onTouchCancel={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleJoystickEnd();
+          }}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleJoystickStart(e.clientX, e.clientY);
+          }}
+          onMouseMove={(e) => {
+            if (e.buttons === 1) {
               e.preventDefault();
-              if (e.touches.length > 0) {
-                handleJoystickStart(e.touches[0].clientX, e.touches[0].clientY);
-              }
-            }}
-            onTouchMove={(e) => {
+              e.stopPropagation();
+              handleJoystickMove(e.clientX, e.clientY);
+            }
+          }}
+          onMouseUp={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleJoystickEnd();
+          }}
+          onMouseLeave={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleJoystickEnd();
+          }}
+        >
+          {/* Joystick Base Outer Ring */}
+          <div
+            onContextMenu={(e) => {
               e.preventDefault();
-              if (e.touches.length > 0) {
-                handleJoystickMove(e.touches[0].clientX, e.touches[0].clientY);
-              }
+              e.stopPropagation();
             }}
-            onTouchEnd={(e) => {
-              e.preventDefault();
-              handleJoystickEnd();
-            }}
-            onTouchCancel={(e) => {
-              e.preventDefault();
-              handleJoystickEnd();
-            }}
-            onMouseDown={(e) => {
-              handleJoystickStart(e.clientX, e.clientY);
-            }}
-            onMouseMove={(e) => {
-              if (e.buttons === 1) {
-                handleJoystickMove(e.clientX, e.clientY);
-              }
-            }}
-            onMouseUp={handleJoystickEnd}
-            onMouseLeave={handleJoystickEnd}
+            className="relative w-36 h-36 sm:w-44 sm:h-44 bg-slate-950/85 backdrop-blur-md border-4 border-slate-600/90 rounded-full shadow-[0_12px_32px_rgba(0,0,0,0.85)] flex items-center justify-center gamepad-no-callout select-none touch-none"
           >
-            {/* Joystick Base Outer Ring */}
-            <div className="relative w-36 h-36 sm:w-44 sm:h-44 bg-slate-950/85 backdrop-blur-md border-4 border-slate-600/90 rounded-full shadow-[0_12px_32px_rgba(0,0,0,0.85)] flex items-center justify-center">
-              {/* Direction Indicator: UP */}
-              <button
-                type="button"
-                onMouseDown={(e) => {
-                  e.stopPropagation();
-                  handleDpadPress("up");
-                }}
-                onMouseUp={handleDpadRelease}
-                onTouchStart={(e) => {
-                  e.stopPropagation();
-                  handleDpadPress("up");
-                }}
-                onTouchEnd={(e) => {
-                  e.stopPropagation();
-                  handleDpadRelease();
-                }}
-                className={`absolute top-1.5 left-1/2 -translate-x-1/2 w-9 h-8 sm:w-11 sm:h-9 rounded-t-xl flex items-center justify-center font-black text-xs sm:text-sm cursor-pointer transition active:scale-95 ${
-                  activeJoystickDir === "up"
-                    ? "text-emerald-400 bg-emerald-950/60 drop-shadow-[0_0_10px_#34d399]"
-                    : "text-slate-300 hover:text-white"
-                }`}
-                title="Cima"
-              >
-                ▲
-              </button>
+            {/* Direction Indicator: UP */}
+            <button
+              type="button"
+              onContextMenu={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleDpadPress("up");
+              }}
+              onMouseUp={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleDpadRelease();
+              }}
+              onTouchStart={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleDpadPress("up");
+              }}
+              onTouchEnd={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleDpadRelease();
+              }}
+              onTouchCancel={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleDpadRelease();
+              }}
+              className={`absolute top-1.5 left-1/2 -translate-x-1/2 w-9 h-8 sm:w-11 sm:h-9 rounded-t-xl flex items-center justify-center font-black text-xs sm:text-sm cursor-pointer transition active:scale-95 gamepad-no-callout select-none touch-none ${
+                activeJoystickDir === "up"
+                  ? "text-emerald-400 bg-emerald-950/60 drop-shadow-[0_0_10px_#34d399]"
+                  : "text-slate-300 hover:text-white"
+              }`}
+              style={{ WebkitTouchCallout: "none", userSelect: "none" }}
+              title="Cima"
+            >
+              ▲
+            </button>
 
-              {/* Direction Indicator: DOWN */}
-              <button
-                type="button"
-                onMouseDown={(e) => {
-                  e.stopPropagation();
-                  handleDpadPress("down");
-                }}
-                onMouseUp={handleDpadRelease}
-                onTouchStart={(e) => {
-                  e.stopPropagation();
-                  handleDpadPress("down");
-                }}
-                onTouchEnd={(e) => {
-                  e.stopPropagation();
-                  handleDpadRelease();
-                }}
-                className={`absolute bottom-1.5 left-1/2 -translate-x-1/2 w-9 h-8 sm:w-11 sm:h-9 rounded-b-xl flex items-center justify-center font-black text-xs sm:text-sm cursor-pointer transition active:scale-95 ${
-                  activeJoystickDir === "down"
-                    ? "text-emerald-400 bg-emerald-950/60 drop-shadow-[0_0_10px_#34d399]"
-                    : "text-slate-300 hover:text-white"
-                }`}
-                title="Baixo"
-              >
-                ▼
-              </button>
+            {/* Direction Indicator: DOWN */}
+            <button
+              type="button"
+              onContextMenu={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleDpadPress("down");
+              }}
+              onMouseUp={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleDpadRelease();
+              }}
+              onTouchStart={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleDpadPress("down");
+              }}
+              onTouchEnd={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleDpadRelease();
+              }}
+              onTouchCancel={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleDpadRelease();
+              }}
+              className={`absolute bottom-1.5 left-1/2 -translate-x-1/2 w-9 h-8 sm:w-11 sm:h-9 rounded-b-xl flex items-center justify-center font-black text-xs sm:text-sm cursor-pointer transition active:scale-95 gamepad-no-callout select-none touch-none ${
+                activeJoystickDir === "down"
+                  ? "text-emerald-400 bg-emerald-950/60 drop-shadow-[0_0_10px_#34d399]"
+                  : "text-slate-300 hover:text-white"
+              }`}
+              style={{ WebkitTouchCallout: "none", userSelect: "none" }}
+              title="Baixo"
+            >
+              ▼
+            </button>
 
-              {/* Direction Indicator: LEFT */}
-              <button
-                type="button"
-                onMouseDown={(e) => {
-                  e.stopPropagation();
-                  handleDpadPress("left");
-                }}
-                onMouseUp={handleDpadRelease}
-                onTouchStart={(e) => {
-                  e.stopPropagation();
-                  handleDpadPress("left");
-                }}
-                onTouchEnd={(e) => {
-                  e.stopPropagation();
-                  handleDpadRelease();
-                }}
-                className={`absolute left-1.5 top-1/2 -translate-y-1/2 w-8 h-9 sm:w-9 sm:h-11 rounded-l-xl flex items-center justify-center font-black text-xs sm:text-sm cursor-pointer transition active:scale-95 ${
-                  activeJoystickDir === "left"
-                    ? "text-emerald-400 bg-emerald-950/60 drop-shadow-[0_0_10px_#34d399]"
-                    : "text-slate-300 hover:text-white"
-                }`}
-                title="Esquerda"
-              >
-                ◀
-              </button>
+            {/* Direction Indicator: LEFT */}
+            <button
+              type="button"
+              onContextMenu={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleDpadPress("left");
+              }}
+              onMouseUp={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleDpadRelease();
+              }}
+              onTouchStart={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleDpadPress("left");
+              }}
+              onTouchEnd={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleDpadRelease();
+              }}
+              onTouchCancel={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleDpadRelease();
+              }}
+              className={`absolute left-1.5 top-1/2 -translate-y-1/2 w-8 h-9 sm:w-9 sm:h-11 rounded-l-xl flex items-center justify-center font-black text-xs sm:text-sm cursor-pointer transition active:scale-95 gamepad-no-callout select-none touch-none ${
+                activeJoystickDir === "left"
+                  ? "text-emerald-400 bg-emerald-950/60 drop-shadow-[0_0_10px_#34d399]"
+                  : "text-slate-300 hover:text-white"
+              }`}
+              style={{ WebkitTouchCallout: "none", userSelect: "none" }}
+              title="Esquerda"
+            >
+              ◀
+            </button>
 
-              {/* Direction Indicator: RIGHT */}
-              <button
-                type="button"
-                onMouseDown={(e) => {
-                  e.stopPropagation();
-                  handleDpadPress("right");
-                }}
-                onMouseUp={handleDpadRelease}
-                onTouchStart={(e) => {
-                  e.stopPropagation();
-                  handleDpadPress("right");
-                }}
-                onTouchEnd={(e) => {
-                  e.stopPropagation();
-                  handleDpadRelease();
-                }}
-                className={`absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-9 sm:w-9 sm:h-11 rounded-r-xl flex items-center justify-center font-black text-xs sm:text-sm cursor-pointer transition active:scale-95 ${
-                  activeJoystickDir === "right"
-                    ? "text-emerald-400 bg-emerald-950/60 drop-shadow-[0_0_10px_#34d399]"
-                    : "text-slate-300 hover:text-white"
-                }`}
-                title="Direita"
-              >
-                ▶
-              </button>
+            {/* Direction Indicator: RIGHT */}
+            <button
+              type="button"
+              onContextMenu={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleDpadPress("right");
+              }}
+              onMouseUp={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleDpadRelease();
+              }}
+              onTouchStart={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleDpadPress("right");
+              }}
+              onTouchEnd={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleDpadRelease();
+              }}
+              onTouchCancel={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleDpadRelease();
+              }}
+              className={`absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-9 sm:w-9 sm:h-11 rounded-r-xl flex items-center justify-center font-black text-xs sm:text-sm cursor-pointer transition active:scale-95 gamepad-no-callout select-none touch-none ${
+                activeJoystickDir === "right"
+                  ? "text-emerald-400 bg-emerald-950/60 drop-shadow-[0_0_10px_#34d399]"
+                  : "text-slate-300 hover:text-white"
+              }`}
+              style={{ WebkitTouchCallout: "none", userSelect: "none" }}
+              title="Direita"
+            >
+              ▶
+            </button>
 
-              {/* Inner Tactile Track Ring */}
-              <div className="w-20 h-20 sm:w-26 sm:h-26 rounded-full border-2 border-dashed border-slate-700/60 flex items-center justify-center pointer-events-none" />
+            {/* Inner Tactile Track Ring */}
+            <div className="w-20 h-20 sm:w-26 sm:h-26 rounded-full border-2 border-dashed border-slate-700/60 flex items-center justify-center pointer-events-none" />
 
-              {/* Central Floating Analog Thumb-Stick Knob */}
-              <div
-                className="absolute w-14 h-14 sm:w-16 sm:h-16 rounded-full border-2 border-slate-400/80 shadow-[0_8px_18px_rgba(0,0,0,0.8)] flex items-center justify-center pointer-events-none transition-transform duration-75"
-                style={{
-                  transform: `translate(${joystickOffset.x}px, ${joystickOffset.y}px)`,
-                  background: "radial-gradient(circle at 35% 30%, #475569 0%, #1e293b 65%, #0f172a 100%)",
-                }}
-              >
-                {/* Thumb-grip concentric ridges */}
-                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-slate-500/70 bg-slate-900/60 flex items-center justify-center">
-                  <div className="w-3.5 h-3.5 rounded-full bg-slate-600/80 shadow-inner" />
-                </div>
+            {/* Central Floating Analog Thumb-Stick Knob */}
+            <div
+              className="absolute w-14 h-14 sm:w-16 sm:h-16 rounded-full border-2 border-slate-400/80 shadow-[0_8px_18px_rgba(0,0,0,0.8)] flex items-center justify-center pointer-events-none transition-transform duration-75"
+              style={{
+                transform: `translate(${joystickOffset.x}px, ${joystickOffset.y}px)`,
+                background: "radial-gradient(circle at 35% 30%, #475569 0%, #1e293b 65%, #0f172a 100%)",
+              }}
+            >
+              {/* Thumb-grip concentric ridges */}
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-slate-500/70 bg-slate-900/60 flex items-center justify-center">
+                <div className="w-3.5 h-3.5 rounded-full bg-slate-600/80 shadow-inner" />
               </div>
             </div>
           </div>
+        </div>
 
           {/* CENTER-BOTTOM STATUS & QUICK EXIT PILL */}
           <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-20 hidden lg:flex flex-col items-center gap-1 max-w-md pointer-events-auto">
@@ -7021,16 +7142,28 @@ export default function RpgPage() {
             )}
 
             {/* Handheld Ergonomic Controller Housing for Right Hand */}
-            <div className="relative p-2.5 sm:p-3 bg-slate-950/85 backdrop-blur-md border-4 border-slate-600/90 rounded-3xl shadow-[0_12px_32px_rgba(0,0,0,0.85)] flex flex-col gap-2.5">
+            <div
+              onContextMenu={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              className="relative p-2.5 sm:p-3 bg-slate-950/85 backdrop-blur-md border-4 border-slate-600/90 rounded-3xl shadow-[0_12px_32px_rgba(0,0,0,0.85)] flex flex-col gap-2.5 gamepad-no-callout select-none touch-none"
+              style={{ WebkitTouchCallout: "none", userSelect: "none" }}
+            >
               {/* Top Row: Auxiliary Quick Buttons (Bolsa & Celular) */}
               <div className="flex items-center justify-end gap-2.5 pr-1">
                 {/* Bolsa */}
                 <button
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
                   onClick={() => {
                     setIsBagOpen(true);
                     playSfx("open");
                   }}
-                  className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl gba-btn-sub-tactile flex flex-col items-center justify-center text-white cursor-pointer active:scale-95 transition"
+                  className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl gba-btn-sub-tactile flex flex-col items-center justify-center text-white cursor-pointer active:scale-95 transition gamepad-no-callout select-none touch-none"
+                  style={{ WebkitTouchCallout: "none", userSelect: "none" }}
                   title="Abrir Bolsa de Itens e Pokémon"
                 >
                   <span className="text-xs sm:text-sm">🎒</span>
@@ -7039,8 +7172,13 @@ export default function RpgPage() {
 
                 {/* PokéCelular */}
                 <button
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
                   onClick={openPhoneIfAllowed}
-                  className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl gba-btn-sub-tactile flex flex-col items-center justify-center text-white cursor-pointer relative active:scale-95 transition"
+                  className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl gba-btn-sub-tactile flex flex-col items-center justify-center text-white cursor-pointer relative active:scale-95 transition gamepad-no-callout select-none touch-none"
+                  style={{ WebkitTouchCallout: "none", userSelect: "none" }}
                   title="Abrir PokéCelular"
                 >
                   <Smartphone className="w-3.5 h-3.5 text-sky-200" />
@@ -7055,22 +7193,36 @@ export default function RpgPage() {
               <div className="flex items-end gap-3 pt-0.5">
                 {/* Botão B (Correr / Cancelar): Lower-Left of Thumb */}
                 <button
-                  onMouseDown={() => {
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
                     playerRef.current.isRunning = true;
                   }}
-                  onMouseUp={() => {
+                  onMouseUp={(e) => {
+                    e.preventDefault();
                     playerRef.current.isRunning = false;
                   }}
                   onTouchStart={(e) => {
                     e.preventDefault();
+                    e.stopPropagation();
                     playerRef.current.isRunning = true;
                     playSfx("pop");
                   }}
                   onTouchEnd={(e) => {
                     e.preventDefault();
+                    e.stopPropagation();
                     playerRef.current.isRunning = false;
                   }}
-                  className="w-13 h-13 sm:w-15 sm:h-15 rounded-full gba-btn-b-tactile flex flex-col items-center justify-center text-slate-100 cursor-pointer active:scale-95 transition shadow-lg"
+                  onTouchCancel={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    playerRef.current.isRunning = false;
+                  }}
+                  className="w-13 h-13 sm:w-15 sm:h-15 rounded-full gba-btn-b-tactile flex flex-col items-center justify-center text-slate-100 cursor-pointer active:scale-95 transition shadow-lg gamepad-no-callout select-none touch-none"
+                  style={{ WebkitTouchCallout: "none", userSelect: "none" }}
                   title="Correr (B)"
                 >
                   <span className="font-black text-base sm:text-lg">B</span>
@@ -7079,12 +7231,18 @@ export default function RpgPage() {
 
                 {/* Botão A (Ação / Interagir / Confirmar): Upper-Right of Thumb */}
                 <button
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
                   onClick={handleInteract}
                   onTouchStart={(e) => {
                     e.preventDefault();
+                    e.stopPropagation();
                     handleInteract();
                   }}
-                  className="w-16 h-16 sm:w-18 sm:h-18 rounded-full gba-btn-a-tactile flex flex-col items-center justify-center text-white cursor-pointer active:scale-95 transition shadow-2xl"
+                  className="w-16 h-16 sm:w-18 sm:h-18 rounded-full gba-btn-a-tactile flex flex-col items-center justify-center text-white cursor-pointer active:scale-95 transition shadow-2xl gamepad-no-callout select-none touch-none"
+                  style={{ WebkitTouchCallout: "none", userSelect: "none" }}
                   title="Ação / Interagir (A)"
                 >
                   <span className="font-black text-xl sm:text-2xl leading-none">A</span>
