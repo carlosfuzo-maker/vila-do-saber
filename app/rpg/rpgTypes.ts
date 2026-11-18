@@ -159,6 +159,8 @@ export interface RpgSaveData {
   completedSchoolChapters?: string[]; // IDs of school chapter presentations completed (e.g. "math_ch1", "portuguese_ch1")
   wildHuntQuota?: number; // Available tall-grass hunts earned via school lessons & homework
   tutorialStep?: number; // 1..5 = active mandatory tutorial steps, 6 = completed
+  studyStreakDays?: number; // Daily consecutive study streak
+  lastStudyDate?: string; // YYYY-MM-DD of last activity
   updatedAt: string;
 }
 

@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { CapturedPokemon, RpgInventory } from "../rpgTypes";
 import { getPokemonById } from "../data/kantoPokedex";
+import { PokemonImage } from "@/app/components/PokemonImage";
 import { playSound } from "@/lib/soundEffects";
 import {
   X,
@@ -317,18 +318,13 @@ export function RpgBagModal({
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex items-center gap-2.5">
                             <div className="w-14 h-14 rounded-2xl bg-white/10 p-1 flex items-center justify-center border border-white/20 shadow-inner overflow-hidden flex-shrink-0">
-                              {p.artworkUrl || p.spriteUrl ? (
-                                <img
-                                  src={p.artworkUrl || p.spriteUrl}
-                                  alt={p.name}
-                                  className="w-full h-full object-contain filter drop-shadow-sm"
-                                  onError={(e) => {
-                                    (e.target as HTMLImageElement).src = p.spriteUrl || "";
-                                  }}
-                                />
-                              ) : (
-                                <span className="text-3xl">{p.emoji}</span>
-                              )}
+                              <PokemonImage
+                                pokedexId={p.pokedexId}
+                                name={p.name}
+                                emoji={p.emoji}
+                                priorityUrl={p.artworkUrl || p.spriteUrl}
+                                className="w-full h-full object-contain filter drop-shadow-sm"
+                              />
                             </div>
                             <div>
                               <div className="flex items-center gap-1.5 flex-wrap">
@@ -558,9 +554,11 @@ export function RpgBagModal({
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
                           <div className="w-12 h-12 rounded-xl bg-slate-950 border border-slate-700 flex items-center justify-center p-1 shrink-0">
-                            <img
-                              src={p.artworkUrl || p.spriteUrl}
-                              alt={p.name}
+                            <PokemonImage
+                              pokedexId={p.pokedexId}
+                              name={p.name}
+                              emoji={p.emoji}
+                              priorityUrl={p.artworkUrl || p.spriteUrl}
                               className="w-full h-full object-contain"
                             />
                           </div>

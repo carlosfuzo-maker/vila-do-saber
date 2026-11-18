@@ -206,11 +206,40 @@ export function getPokemonArtworkUrl(pokedexId: number): string {
 }
 
 export function getPokemonSpriteUrl(pokedexId: number): string {
-  return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-iii/firered-leafgreen/${pokedexId}.png`;
+  if (pokedexId <= 151) {
+    return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-iii/firered-leafgreen/${pokedexId}.png`;
+  }
+  return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokedexId}.png`;
 }
 
 export function getPokemonAnimatedUrl(pokedexId: number): string {
   return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/${pokedexId}.gif`;
+}
+
+export function getPokemonFallbackChain(pokedexId: number): string[] {
+  const paddedId = String(pokedexId).padStart(3, "0");
+  const chain: string[] = [
+    // 1. Official Artwork (Crisp, colorful 475x475)
+    `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${pokedexId}.png`,
+    // 2. Pokémon HOME 3D Render (High resolution, 100% complete for all generations up to 1025)
+    `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/home/${pokedexId}.png`,
+    // 3. Official Pokemon.com Assets CDN
+    `https://assets.pokemon.com/assets/cms2/img/pokedex/full/${paddedId}.png`,
+    // 4. Standard Front Default (Guaranteed in PokeAPI database for 100% of IDs)
+    `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokedexId}.png`,
+  ];
+
+  // 5. FireRed / Gen 3 sprite (for Kanto 1-151)
+  if (pokedexId <= 151) {
+    chain.push(
+      `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-iii/firered-leafgreen/${pokedexId}.png`
+    );
+  }
+
+  // 6. Showdown animated GIF
+  chain.push(`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/${pokedexId}.gif`);
+
+  return chain;
 }
 
 export const KANTO_POKEDEX_151: KantoPokemonData[] = [

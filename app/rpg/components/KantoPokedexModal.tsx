@@ -9,6 +9,7 @@ import {
   getPokemonSpawnCategory,
   getSpawnRateMeta,
 } from "../data/kantoPokedex";
+import { PokemonImage } from "@/app/components/PokemonImage";
 import {
   ALL_REGIONAL_POKEMON,
   AnyRegionalPokemon,
@@ -413,11 +414,15 @@ export const KantoPokedexModal: React.FC<KantoPokedexModalProps> = ({
                   style={{ backgroundColor: selectedPokemon.typeColor }}
                 />
 
-                <img
-                  src={getPokemonArtworkUrl(selectedPokemon.pokedexId)}
-                  alt={selectedPokemon.name}
-                  className="relative z-10 max-h-[160px] max-w-[160px] object-contain drop-shadow-xl animate-in zoom-in-95 duration-200"
-                />
+                <div className="relative z-10 w-full h-[160px] flex items-center justify-center">
+                  <PokemonImage
+                    pokedexId={selectedPokemon.pokedexId}
+                    name={selectedPokemon.name}
+                    emoji={selectedPokemon.emoji}
+                    priorityUrl={getPokemonArtworkUrl(selectedPokemon.pokedexId)}
+                    className="max-h-[160px] max-w-[160px] object-contain drop-shadow-xl animate-in zoom-in-95 duration-200"
+                  />
+                </div>
 
                 {/* Gen 3/4 FireRed style Sprite in corner */}
                 <div className="absolute bottom-1 right-1 bg-slate-950/80 border border-slate-700 rounded-lg p-0.5">

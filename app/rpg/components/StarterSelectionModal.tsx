@@ -5,6 +5,7 @@ import { Sparkles, Heart, Zap, Shield, Flame, Leaf, Droplets, CheckCircle2 } fro
 import { StudentYear } from "../rpgTypes";
 import { playSound } from "@/lib/soundEffects";
 import { getPokemonAnimatedUrl, getPokemonArtworkUrl } from "../data/kantoPokedex";
+import { PokemonImage } from "@/app/components/PokemonImage";
 
 export interface StarterChoiceOption {
   species: string;
@@ -175,14 +176,12 @@ export function StarterSelectionModal({
                     style={{ backgroundColor: `${starter.typeColor}20` }}
                     className="absolute inset-2 rounded-full blur-xl group-hover:blur-2xl transition-all"
                   />
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={getPokemonAnimatedUrl(starter.pokedexId)}
-                    alt={starter.name}
+                  <PokemonImage
+                    pokedexId={starter.pokedexId}
+                    name={starter.name}
+                    emoji={starter.emoji}
+                    priorityUrl={getPokemonAnimatedUrl(starter.pokedexId)}
                     className="w-20 h-20 sm:w-24 sm:h-24 object-contain pixelated z-10 drop-shadow-md group-hover:scale-110 transition-transform duration-200"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = getPokemonArtworkUrl(starter.pokedexId);
-                    }}
                   />
                 </div>
 
@@ -242,14 +241,12 @@ export function StarterSelectionModal({
         {selectedStarter && (
           <div className="bg-slate-950 border border-amber-500/50 p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 animate-in fade-in slide-in-from-bottom-2 duration-200 shadow-xl">
             <div className="flex items-center gap-3">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={getPokemonAnimatedUrl(selectedStarter.pokedexId)}
-                alt={selectedStarter.name}
+              <PokemonImage
+                pokedexId={selectedStarter.pokedexId}
+                name={selectedStarter.name}
+                emoji={selectedStarter.emoji}
+                priorityUrl={getPokemonAnimatedUrl(selectedStarter.pokedexId)}
                 className="w-12 h-12 object-contain pixelated"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = getPokemonArtworkUrl(selectedStarter.pokedexId);
-                }}
               />
               <div>
                 <p className="text-slate-200 text-xs sm:text-sm">

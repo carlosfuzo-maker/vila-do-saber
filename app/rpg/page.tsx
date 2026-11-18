@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import Link from "next/link";
 import confetti from "canvas-confetti";
-import { playSound } from "@/lib/soundEffects";
+import { playSound, startBgm, stopBgm, toggleBgm, getIsBgmPlaying } from "@/lib/soundEffects";
 import { KnowledgeBattleModal } from "../vila/pokemonEngine/KnowledgeBattleModal";
 import { SaberPhoneModal } from "../vila/pokemonEngine/SaberPhoneModal";
 import { PokemonCaptureModal } from "./components/PokemonCaptureModal";
@@ -218,6 +218,8 @@ import {
   X,
   ChevronDown,
   ChevronUp,
+  Music,
+  Music2,
 } from "lucide-react";
 
 // Types
@@ -467,6 +469,7 @@ export default function RpgPage() {
   const [coins, setCoins] = useState<number>(20);
   const [xp, setXp] = useState<number>(0);
   const [isMuted, setIsMuted] = useState<boolean>(false);
+  const [isBgmMuted, setIsBgmMuted] = useState<boolean>(false);
   const [showHelp, setShowHelp] = useState<boolean>(false);
 
   // School Chapters & Study-Before-Hunt Progression State
@@ -977,6 +980,12 @@ export default function RpgPage() {
   const [answeredQuestionIds, setAnsweredQuestionIds] = useState<string[]>([]);
   const answeredQuestionIdsRef = useRef<string[]>([]);
 
+  // Daily Study Streak Tracking per Profile
+  const [studyStreakDays, setStudyStreakDays] = useState<number>(1);
+  const studyStreakDaysRef = useRef<number>(1);
+  const [lastStudyDate, setLastStudyDate] = useState<string>("");
+  const lastStudyDateRef = useRef<string>("");
+
   const markQuestionAnswered = useCallback(
     (questionId: string) => {
       if (!questionId) return;
@@ -991,6 +1000,27 @@ export default function RpgPage() {
         wildHuntQuotaRef.current = next;
         return next;
       });
+
+      // Update study streak
+      const todayStr = new Date().toISOString().split("T")[0];
+      if (lastStudyDateRef.current !== todayStr) {
+        if (lastStudyDateRef.current) {
+          const lastDate = new Date(lastStudyDateRef.current);
+          const todayDate = new Date(todayStr);
+          const diffDays = Math.floor((todayDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
+          if (diffDays === 1) {
+            studyStreakDaysRef.current += 1;
+          } else {
+            studyStreakDaysRef.current = 1;
+          }
+        } else {
+          studyStreakDaysRef.current = 1;
+        }
+        lastStudyDateRef.current = todayStr;
+        setStudyStreakDays(studyStreakDaysRef.current);
+        setLastStudyDate(todayStr);
+      }
+
       if (answeredQuestionIdsRef.current.includes(questionId)) return;
       const updated = [...answeredQuestionIdsRef.current, questionId];
       answeredQuestionIdsRef.current = updated;
@@ -1004,6 +1034,8 @@ export default function RpgPage() {
             const parsed = JSON.parse(raw);
             parsed.answeredQuestionIds = updated;
             parsed.wildHuntQuota = wildHuntQuotaRef.current;
+            parsed.studyStreakDays = studyStreakDaysRef.current;
+            parsed.lastStudyDate = lastStudyDateRef.current;
             localStorage.setItem(localKey, JSON.stringify(parsed));
           }
         } catch (e) {
@@ -1183,13 +1215,44 @@ export default function RpgPage() {
 
   // Sound helper with mute check
   const playSfx = useCallback(
-    (type: "pop" | "star" | "success" | "click" | "open" | "fanfare") => {
+    (type: "pop" | "star" | "success" | "click" | "open" | "fanfare" | "step") => {
       if (!isMuted) {
         playSound(type);
       }
     },
     [isMuted]
   );
+
+  // Retro Chiptune BGM Interaction Hook
+  useEffect(() => {
+    const handleFirstUserInteraction = () => {
+      if (!isBgmMuted && !getIsBgmPlaying()) {
+        startBgm();
+      }
+      window.removeEventListener("pointerdown", handleFirstUserInteraction);
+      window.removeEventListener("keydown", handleFirstUserInteraction);
+    };
+
+    window.addEventListener("pointerdown", handleFirstUserInteraction, { once: true });
+    window.addEventListener("keydown", handleFirstUserInteraction, { once: true });
+
+    return () => {
+      window.removeEventListener("pointerdown", handleFirstUserInteraction);
+      window.removeEventListener("keydown", handleFirstUserInteraction);
+    };
+  }, [isBgmMuted]);
+
+  useEffect(() => {
+    if (isBgmMuted) {
+      stopBgm();
+    }
+  }, [isBgmMuted]);
+
+  useEffect(() => {
+    return () => {
+      stopBgm();
+    };
+  }, []);
 
   // ========================================================
   // PER-PROFILE CLOUD & SUPABASE PERSISTENCE (LOAD & SAVE)
@@ -1230,6 +1293,23 @@ export default function RpgPage() {
       wildHuntQuotaRef.current = 0;
       setWildHuntQuota(0);
     }
+
+    // Study Streak Restoration & Daily Progression
+    const todayStr = new Date().toISOString().split("T")[0];
+    let loadedStreak = typeof data.studyStreakDays === "number" && data.studyStreakDays > 0 ? data.studyStreakDays : 1;
+    if (data.lastStudyDate) {
+      const lastDate = new Date(data.lastStudyDate);
+      const todayDate = new Date(todayStr);
+      const diffTime = todayDate.getTime() - lastDate.getTime();
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      if (diffDays > 1) {
+        loadedStreak = 1;
+      }
+    }
+    studyStreakDaysRef.current = loadedStreak;
+    setStudyStreakDays(loadedStreak);
+    lastStudyDateRef.current = data.lastStudyDate || todayStr;
+    setLastStudyDate(data.lastStudyDate || todayStr);
     const hasPkmn = Array.isArray(data.pokemonList) && data.pokemonList.length > 0;
     if (hasPkmn) {
       // Ensure first 6 are in active party unless explicitly marked inBox
@@ -1393,6 +1473,8 @@ export default function RpgPage() {
         answeredQuestionIds: answeredQuestionIdsRef.current,
         completedSchoolChapters: completedSchoolChaptersRef.current,
         wildHuntQuota: wildHuntQuotaRef.current,
+        studyStreakDays: studyStreakDaysRef.current,
+        lastStudyDate: lastStudyDateRef.current,
         tutorialStep: tutorialStepRef.current,
         updatedAt: new Date().toISOString(),
       };
@@ -1575,6 +1657,8 @@ export default function RpgPage() {
           answeredQuestionIds: answeredQuestionIdsRef.current,
           completedSchoolChapters: completedSchoolChaptersRef.current,
           wildHuntQuota: wildHuntQuotaRef.current,
+          studyStreakDays: studyStreakDaysRef.current,
+          lastStudyDate: lastStudyDateRef.current,
           updatedAt: new Date().toISOString(),
         };
         saveProfileSave(saveSnapshot).catch(console.warn);
@@ -4485,6 +4569,7 @@ export default function RpgPage() {
           p.drawX = p.gridX;
           p.drawY = p.gridY;
           lastTileArrivalRef.current = Date.now();
+          playSfx("step");
 
           // INTERIOR TRIGGERS (Walkable Real Mini-Maps)
           if (activeInterior) {
@@ -4890,9 +4975,6 @@ export default function RpgPage() {
             p.gridY = nextGridY;
             p.isMoving = true;
             p.moveProgress = 0;
-            if (Math.random() < 0.3) {
-              playSfx("pop");
-            }
           } else {
             targetMoveTile.current = null;
           }
@@ -6605,9 +6687,31 @@ export default function RpgPage() {
           <button
             onClick={() => setIsMuted(!isMuted)}
             className="w-8 h-8 rounded-xl bg-slate-900/80 backdrop-blur-md border border-slate-700 hover:bg-slate-800 text-slate-200 flex items-center justify-center transition shadow cursor-pointer active:scale-95"
-            title={isMuted ? "Ativar som" : "Desativar som"}
+            title={isMuted ? "Ativar som SFX" : "Desativar som SFX"}
           >
             {isMuted ? <VolumeX className="w-3.5 h-3.5 text-rose-400" /> : <Volume2 className="w-3.5 h-3.5 text-emerald-400" />}
+          </button>
+
+          {/* Retro 8-Bit BGM Music Toggle */}
+          <button
+            onClick={() => {
+              const next = !isBgmMuted;
+              setIsBgmMuted(next);
+              if (next) {
+                stopBgm();
+              } else {
+                startBgm();
+              }
+              playSfx("click");
+            }}
+            className="w-8 h-8 rounded-xl bg-slate-900/80 backdrop-blur-md border border-slate-700 hover:bg-slate-800 text-slate-200 flex items-center justify-center transition shadow cursor-pointer active:scale-95"
+            title={isBgmMuted ? "Ligar Música Chiptune 8-Bit" : "Desligar Música Chiptune 8-Bit"}
+          >
+            {isBgmMuted ? (
+              <Music2 className="w-3.5 h-3.5 text-slate-500 opacity-60" />
+            ) : (
+              <Music className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+            )}
           </button>
 
           {/* Fullscreen Toggle */}
@@ -7345,6 +7449,34 @@ export default function RpgPage() {
                 </button>
               </div>
 
+              {/* Sound & Music Controls */}
+              <div className="grid grid-cols-2 gap-1.5">
+                <button
+                  onClick={() => {
+                    setIsMuted(!isMuted);
+                    playSfx("click");
+                  }}
+                  className="py-1.5 px-2 bg-[#ffffff] hover:bg-[#e8ece8] border border-[#b0b8c0] rounded-xl text-[10px] font-black text-[#303840] flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer"
+                >
+                  <span>{isMuted ? "🔇 SFX: Off" : "🔊 SFX: On"}</span>
+                </button>
+                <button
+                  onClick={() => {
+                    const next = !isBgmMuted;
+                    setIsBgmMuted(next);
+                    if (next) {
+                      stopBgm();
+                    } else {
+                      startBgm();
+                    }
+                    playSfx("click");
+                  }}
+                  className="py-1.5 px-2 bg-[#ffffff] hover:bg-[#e8ece8] border border-[#b0b8c0] rounded-xl text-[10px] font-black text-[#303840] flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer"
+                >
+                  <span>{isBgmMuted ? "🎵 BGM: Off" : "🎶 BGM: On"}</span>
+                </button>
+              </div>
+
               <div className="flex items-center gap-1.5">
                 <div className="flex-1">
                   <PwaInstallButton />
@@ -7814,6 +7946,11 @@ export default function RpgPage() {
               activeQuest,
               phoneMessages: messages,
               rivalConfig,
+              answeredQuestionIds: answeredQuestionIdsRef.current,
+              completedSchoolChapters: completedSchoolChaptersRef.current,
+              wildHuntQuota: wildHuntQuotaRef.current,
+              studyStreakDays: studyStreakDaysRef.current,
+              lastStudyDate: lastStudyDateRef.current,
               updatedAt: new Date().toISOString(),
             }
             : null

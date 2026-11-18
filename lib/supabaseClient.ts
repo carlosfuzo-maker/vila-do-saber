@@ -185,6 +185,8 @@ export function getDefaultProfileSave(profileId: ProfileId): RpgSaveData {
     completedSchoolChapters: [],
     wildHuntQuota: 0,
     tutorialStep: 1,
+    studyStreakDays: 1,
+    lastStudyDate: new Date().toISOString().split("T")[0],
     updatedAt: new Date().toISOString(),
   };
 }

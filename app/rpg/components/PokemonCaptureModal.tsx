@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { WildPokemonDef, CapturedPokemon, RpgInventory } from "../rpgTypes";
 import { getPokemonSpawnCategory, getSpawnRateMeta } from "../data/kantoPokedex";
+import { PokemonImage } from "@/app/components/PokemonImage";
 import { playSound } from "@/lib/soundEffects";
 import confetti from "canvas-confetti";
 import {
@@ -292,20 +293,15 @@ export function PokemonCaptureModal({
           <div className="relative z-20 flex flex-col items-center justify-center my-auto">
             {phase === "encounter" || phase === "escaped" ? (
               <div className="relative flex flex-col items-center justify-center animate-bounce-subtle">
-                {/* Pokemon Sprite / Full Artwork (100% whole, clean, unobstructed) */}
+                {/* Pokemon Sprite / Full Artwork (100% whole, clean, unobstructed with multi-tier fallback) */}
                 <div className="relative w-36 h-36 sm:w-44 sm:h-44 flex items-center justify-center">
-                  {wildPokemon.artworkUrl ? (
-                    <img
-                      src={wildPokemon.artworkUrl}
-                      alt={wildPokemon.name}
-                      className="max-w-full max-h-full object-contain filter drop-shadow-[0_12px_20px_rgba(0,0,0,0.45)] select-none transform transition duration-300 hover:scale-105"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = wildPokemon.spriteUrl;
-                      }}
-                    />
-                  ) : (
-                    <span className="text-7xl">{wildPokemon.emoji}</span>
-                  )}
+                  <PokemonImage
+                    pokedexId={wildPokemon.pokedexId}
+                    name={wildPokemon.name}
+                    emoji={wildPokemon.emoji}
+                    priorityUrl={wildPokemon.artworkUrl}
+                    className="max-w-full max-h-full object-contain filter drop-shadow-[0_12px_20px_rgba(0,0,0,0.45)] select-none transform transition duration-300 hover:scale-105"
+                  />
                 </div>
 
                 {/* Contact Shadow right under the Pokémon's base */}
@@ -326,15 +322,13 @@ export function PokemonCaptureModal({
             ) : (
               <div className="flex flex-col items-center animate-bounce">
                 <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-3xl bg-gradient-to-br from-amber-300 to-amber-500 border-4 border-white shadow-2xl flex items-center justify-center p-2 relative">
-                  {wildPokemon.artworkUrl ? (
-                    <img
-                      src={wildPokemon.artworkUrl}
-                      alt={wildPokemon.name}
-                      className="w-full h-full object-contain drop-shadow-md"
-                    />
-                  ) : (
-                    <span className="text-5xl">⭐</span>
-                  )}
+                  <PokemonImage
+                    pokedexId={wildPokemon.pokedexId}
+                    name={wildPokemon.name}
+                    emoji={wildPokemon.emoji}
+                    priorityUrl={wildPokemon.artworkUrl}
+                    className="w-full h-full object-contain drop-shadow-md"
+                  />
                   <span className="absolute -top-2 -right-2 text-2xl">✨</span>
                 </div>
                 <span className="mt-2 bg-emerald-600 text-white font-black text-xs px-4 py-1.5 rounded-full shadow-lg border border-emerald-300">

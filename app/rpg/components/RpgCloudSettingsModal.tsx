@@ -16,6 +16,13 @@ import {
   Check,
   Server,
   ShieldCheck,
+  GraduationCap,
+  Award,
+  Trophy,
+  Flame,
+  BookOpen,
+  Sparkles,
+  Target,
 } from "lucide-react";
 import {
   getSupabaseCredentials,
@@ -23,6 +30,7 @@ import {
   testSupabaseConnection,
 } from "@/lib/supabaseClient";
 import { ProfileId, RpgSaveData } from "../rpgTypes";
+import { ACADEMIC_QUESTIONS_BANK } from "../data/academicQuestions";
 import { playSound } from "@/lib/soundEffects";
 
 interface RpgCloudSettingsModalProps {
@@ -42,7 +50,7 @@ export function RpgCloudSettingsModal({
   onManualSyncTrigger,
   isSyncing = false,
 }: RpgCloudSettingsModalProps) {
-  const [activeTab, setActiveTab] = useState<"account" | "cloud" | "sql">("account");
+  const [activeTab, setActiveTab] = useState<"report" | "account" | "cloud" | "sql">("report");
 
   // Credentials
   const [supabaseUrl, setSupabaseUrl] = useState("");
@@ -57,6 +65,42 @@ export function RpgCloudSettingsModal({
   const [confirmPinInput, setConfirmPinInput] = useState("");
   const [pinFeedback, setPinFeedback] = useState<{ success: boolean; message: string } | null>(null);
   const [showPin, setShowPin] = useState(false);
+
+  // School stats for Parent Report
+  const answeredSet = new Set(activeProfile?.answeredQuestionIds || []);
+  const questionsForYear = activeProfile
+    ? ACADEMIC_QUESTIONS_BANK.filter((q) => q.year === activeProfile.year)
+    : [];
+  const totalQuestionsAvailable = questionsForYear.length || 1;
+  const totalAnswered = answeredSet.size;
+  const answeredPct = Math.round((totalAnswered / totalQuestionsAvailable) * 100);
+
+  const subjectsMap: Record<
+    string,
+    { total: number; answered: number; label: string; icon: string; gradient: string; border: string }
+  > = {
+    matematica: { total: 0, answered: 0, label: "Matemática", icon: "📐", gradient: "from-blue-600/30 to-cyan-600/20", border: "border-blue-500/40" },
+    portugues: { total: 0, answered: 0, label: "Português", icon: "📚", gradient: "from-emerald-600/30 to-teal-600/20", border: "border-emerald-500/40" },
+    ciencias: { total: 0, answered: 0, label: "Ciências & Natureza", icon: "🔬", gradient: "from-amber-600/30 to-orange-600/20", border: "border-amber-500/40" },
+    ingles: { total: 0, answered: 0, label: "Inglês", icon: "🌍", gradient: "from-purple-600/30 to-indigo-600/20", border: "border-purple-500/40" },
+  };
+
+  questionsForYear.forEach((q) => {
+    let key: string = q.subject;
+    if (key === "biologia" || key === "quimica") key = "ciencias";
+    if (subjectsMap[key]) {
+      subjectsMap[key].total += 1;
+      if (answeredSet.has(q.id)) {
+        subjectsMap[key].answered += 1;
+      }
+    }
+  });
+
+  const completedChaptersCount = (activeProfile?.completedSchoolChapters || []).length;
+  const studyStreak = activeProfile?.studyStreakDays || 1;
+  const wildHuntQuota = activeProfile?.wildHuntQuota || 0;
+  const capturedCount = activeProfile?.pokemonList?.length || 0;
+  const badgesCount = Object.values(activeProfile?.gymBadges || {}).filter(Boolean).length;
 
   useEffect(() => {
     if (isOpen) {
@@ -201,23 +245,36 @@ CREATE POLICY "Permitir gravação para todos" ON public.rpg_profiles FOR ALL US
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex bg-slate-800/80 border-b border-slate-700/60 p-2 gap-2">
+        <div className="flex bg-slate-800/80 border-b border-slate-700/60 p-2 gap-2 overflow-x-auto">
+          {activeProfile && (
+            <button
+              onClick={() => setActiveTab("report")}
+              className={`flex-1 min-w-[140px] py-2.5 px-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all ${
+                activeTab === "report"
+                  ? "bg-gradient-to-r from-amber-500 to-red-500 text-white shadow-md shadow-red-500/20"
+                  : "text-slate-400 hover:text-white hover:bg-slate-700/40"
+              }`}
+            >
+              <GraduationCap className="w-4 h-4 text-amber-300" />
+              Painel dos Pais
+            </button>
+          )}
           {activeProfile && (
             <button
               onClick={() => setActiveTab("account")}
-              className={`flex-1 py-2.5 px-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
+              className={`flex-1 min-w-[120px] py-2.5 px-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all ${
                 activeTab === "account"
                   ? "bg-red-500 text-white shadow-md shadow-red-500/20"
                   : "text-slate-400 hover:text-white hover:bg-slate-700/40"
               }`}
             >
               <KeyRound className="w-4 h-4" />
-              Senha da Jogadora
+              Senha / PIN
             </button>
           )}
           <button
             onClick={() => setActiveTab("cloud")}
-            className={`flex-1 py-2.5 px-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
+            className={`flex-1 min-w-[120px] py-2.5 px-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all ${
               activeTab === "cloud"
                 ? "bg-red-500 text-white shadow-md shadow-red-500/20"
                 : "text-slate-400 hover:text-white hover:bg-slate-700/40"
@@ -228,7 +285,7 @@ CREATE POLICY "Permitir gravação para todos" ON public.rpg_profiles FOR ALL US
           </button>
           <button
             onClick={() => setActiveTab("sql")}
-            className={`flex-1 py-2.5 px-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
+            className={`flex-1 min-w-[100px] py-2.5 px-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all ${
               activeTab === "sql"
                 ? "bg-red-500 text-white shadow-md shadow-red-500/20"
                 : "text-slate-400 hover:text-white hover:bg-slate-700/40"
@@ -241,6 +298,143 @@ CREATE POLICY "Permitir gravação para todos" ON public.rpg_profiles FOR ALL US
 
         {/* Tab Content */}
         <div className="p-6 overflow-y-auto space-y-6 flex-1 text-slate-200">
+          {/* TAB 0: PAINEL DOS PAIS / DESEMPENHO ESCOLAR BNCC */}
+          {activeTab === "report" && activeProfile && (
+            <div className="space-y-5 animate-fadeIn">
+              {/* Profile Highlight Header */}
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-900 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg">
+                <div className="flex items-center gap-3">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500 to-red-600 flex items-center justify-center text-2xl font-black text-white shadow-lg">
+                    {activeProfile.playerName === "Cecília" ? "⚡" : "🦊"}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-lg font-black text-white">
+                        {activeProfile.playerName}
+                      </h3>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                        {activeProfile.year}º Ano do Ensino Fundamental
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-400">
+                      Currículo Oficial BNCC • {totalQuestionsAvailable} questões cadastradas
+                    </p>
+                  </div>
+                </div>
+
+                {/* Streak Badge */}
+                <div className="flex items-center gap-3 bg-slate-950/60 border border-slate-700/60 rounded-xl px-4 py-2 self-start sm:self-auto">
+                  <Flame className="w-6 h-6 text-amber-400 animate-pulse" />
+                  <div>
+                    <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Ofensiva de Estudos</div>
+                    <div className="text-sm font-black text-amber-300">{studyStreak} {studyStreak === 1 ? "dia seguido" : "dias seguidos"} 🔥</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Progress Summary Cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="p-3.5 rounded-2xl bg-slate-800/60 border border-slate-700/60 flex flex-col justify-between">
+                  <div className="flex items-center justify-between text-slate-400 mb-1">
+                    <span className="text-[11px] font-bold">Questões Resolvidas</span>
+                    <Target className="w-4 h-4 text-emerald-400" />
+                  </div>
+                  <div className="text-2xl font-black text-white">{totalAnswered}</div>
+                  <div className="text-[10px] text-emerald-400 font-semibold mt-1">
+                    {answeredPct}% do currículo
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-slate-800/60 border border-slate-700/60 flex flex-col justify-between">
+                  <div className="flex items-center justify-between text-slate-400 mb-1">
+                    <span className="text-[11px] font-bold">Capítulos BNCC</span>
+                    <BookOpen className="w-4 h-4 text-blue-400" />
+                  </div>
+                  <div className="text-2xl font-black text-white">{completedChaptersCount}</div>
+                  <div className="text-[10px] text-blue-400 font-semibold mt-1">
+                    Módulos completos
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-slate-800/60 border border-slate-700/60 flex flex-col justify-between">
+                  <div className="flex items-center justify-between text-slate-400 mb-1">
+                    <span className="text-[11px] font-bold">Cotas de Caça</span>
+                    <Sparkles className="w-4 h-4 text-amber-400" />
+                  </div>
+                  <div className="text-2xl font-black text-amber-300">{wildHuntQuota}</div>
+                  <div className="text-[10px] text-slate-400 font-medium mt-1">
+                    Ganha estudando
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-slate-800/60 border border-slate-700/60 flex flex-col justify-between">
+                  <div className="flex items-center justify-between text-slate-400 mb-1">
+                    <span className="text-[11px] font-bold">Time & Insígnias</span>
+                    <Trophy className="w-4 h-4 text-yellow-400" />
+                  </div>
+                  <div className="text-2xl font-black text-white">
+                    {capturedCount} <span className="text-xs text-slate-400 font-normal">Pokémons</span>
+                  </div>
+                  <div className="text-[10px] text-yellow-400 font-semibold mt-1">
+                    {badgesCount} de 4 Insígnias
+                  </div>
+                </div>
+              </div>
+
+              {/* Progress Breakdown by Subject */}
+              <div className="bg-slate-800/40 border border-slate-700/60 rounded-2xl p-4 space-y-3">
+                <h4 className="text-xs uppercase font-black text-slate-300 tracking-wider flex items-center gap-2">
+                  <BookOpen className="w-4 h-4 text-amber-400" />
+                  Progresso por Disciplina Escolar
+                </h4>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {Object.entries(subjectsMap).map(([subKey, info]) => {
+                    const pct = info.total > 0 ? Math.round((info.answered / info.total) * 100) : 0;
+                    return (
+                      <div
+                        key={subKey}
+                        className={`p-3.5 rounded-xl bg-gradient-to-br ${info.gradient} border ${info.border} flex flex-col justify-between space-y-2`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-black text-white flex items-center gap-1.5">
+                            <span className="text-base">{info.icon}</span>
+                            {info.label}
+                          </span>
+                          <span className="text-xs font-mono font-bold text-slate-200">
+                            {info.answered}/{info.total}
+                          </span>
+                        </div>
+
+                        {/* Progress Bar */}
+                        <div className="w-full h-2 bg-slate-900/60 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-white to-amber-300 rounded-full transition-all duration-500"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                        <div className="flex justify-between items-center text-[10px] text-slate-300 font-medium">
+                          <span>Aproveitamento</span>
+                          <span className="font-bold">{pct}%</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Pedagogy Note for Parents */}
+              <div className="p-3.5 rounded-xl bg-blue-950/40 border border-blue-500/30 text-xs text-blue-200 leading-relaxed flex items-start gap-2.5">
+                <Award className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <strong className="text-white block font-semibold mb-0.5">
+                    Como funciona o ciclo pedagógico do jogo:
+                  </strong>
+                  Para caçar Pokémons selvagens na grama alta e avançar de rota, as alunas precisam estudar na Escola de Kanto, resolvendo questões da BNCC do {activeProfile.year}º Ano. Cada questão correta concede XP, moedas para o PokéMart e Cotas de Caça!
+                </div>
+              </div>
+            </div>
+          )}
           {/* TAB 1: SENHA DO PERFIL */}
           {activeTab === "account" && activeProfile && (
             <div className="space-y-4">
