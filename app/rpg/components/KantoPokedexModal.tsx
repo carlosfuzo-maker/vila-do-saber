@@ -425,12 +425,13 @@ export const KantoPokedexModal: React.FC<KantoPokedexModalProps> = ({
                 </div>
 
                 {/* Gen 3/4 FireRed style Sprite in corner */}
-                <div className="absolute bottom-1 right-1 bg-slate-950/80 border border-slate-700 rounded-lg p-0.5">
-                  <img
-                    src={getPokemonSpriteUrl(selectedPokemon.pokedexId)}
-                    alt={`${selectedPokemon.name} sprite`}
+                <div className="absolute bottom-1 right-1 bg-slate-950/80 border border-slate-700 rounded-lg p-0.5 w-10 h-10 flex items-center justify-center">
+                  <PokemonImage
+                    pokedexId={selectedPokemon.pokedexId}
+                    name={selectedPokemon.name}
+                    emoji={selectedPokemon.emoji}
+                    priorityUrl={getPokemonSpriteUrl(selectedPokemon.pokedexId)}
                     className="w-9 h-9 object-contain pixelated"
-                    style={{ imageRendering: "pixelated" }}
                   />
                 </div>
 
@@ -528,11 +529,12 @@ export const KantoPokedexModal: React.FC<KantoPokedexModalProps> = ({
                   >
                     {/* FireRed 16-bit Sprite */}
                     <div className="relative w-10 h-10 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-center flex-shrink-0">
-                      <img
-                        src={getPokemonSpriteUrl(pkmn.pokedexId)}
-                        alt={pkmn.name}
+                      <PokemonImage
+                        pokedexId={pkmn.pokedexId}
+                        name={pkmn.name}
+                        emoji={pkmn.emoji}
+                        priorityUrl={getPokemonSpriteUrl(pkmn.pokedexId)}
                         className="w-8 h-8 object-contain pixelated"
-                        style={{ imageRendering: "pixelated" }}
                       />
                       {isCaptured && (
                         <span className="absolute -top-1 -right-1 text-xs">

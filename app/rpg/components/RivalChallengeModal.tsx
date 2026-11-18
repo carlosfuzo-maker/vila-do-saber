@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { CapturedPokemon, RivalConfig, RivalGender, StudentYear } from "../rpgTypes";
 import { getPokemonById, getPokemonArtworkUrl, getPokemonSpriteUrl } from "../data/kantoPokedex";
+import { PokemonImage } from "@/app/components/PokemonImage";
 import { playSound } from "@/lib/soundEffects";
 import confetti from "canvas-confetti";
 import {
@@ -347,11 +348,21 @@ export function RivalChallengeModal({
                 {/* Player side */}
                 <div className="flex flex-col items-center">
                   <div className="w-20 h-20 rounded-2xl bg-indigo-600/30 border-2 border-indigo-400 p-1 flex items-center justify-center shadow">
-                    <img
-                      src={playerActivePokemon?.artworkUrl || "/assets/rpg/avatars/cecilia.png"}
-                      alt={sisterName}
-                      className="w-16 h-16 object-contain"
-                    />
+                    {playerActivePokemon ? (
+                      <PokemonImage
+                        pokedexId={playerActivePokemon.pokedexId}
+                        name={playerActivePokemon.name}
+                        emoji={playerActivePokemon.emoji}
+                        priorityUrl={playerActivePokemon.artworkUrl || playerActivePokemon.spriteUrl}
+                        className="w-16 h-16 object-contain"
+                      />
+                    ) : (
+                      <img
+                        src="/assets/rpg/avatars/cecilia.png"
+                        alt={sisterName}
+                        className="w-16 h-16 object-contain"
+                      />
+                    )}
                   </div>
                   <span className="text-xs font-black text-white mt-1.5">{sisterName}</span>
                   <span className="text-[10px] text-indigo-300">
@@ -366,11 +377,17 @@ export function RivalChallengeModal({
                 {/* Rival side */}
                 <div className="flex flex-col items-center">
                   <div className="w-20 h-20 rounded-2xl bg-red-600/30 border-2 border-red-400 p-1 flex items-center justify-center shadow">
-                    <img
-                      src={rivalStarterDef ? getPokemonArtworkUrl(rivalStarterDef.pokedexId) : ""}
-                      alt={rivalConfig?.name}
-                      className="w-16 h-16 object-contain"
-                    />
+                    {rivalStarterDef ? (
+                      <PokemonImage
+                        pokedexId={rivalStarterDef.pokedexId}
+                        name={rivalStarterDef.name}
+                        emoji={rivalStarterDef.emoji}
+                        priorityUrl={getPokemonArtworkUrl(rivalStarterDef.pokedexId)}
+                        className="w-16 h-16 object-contain"
+                      />
+                    ) : (
+                      <span className="text-3xl">👤</span>
+                    )}
                   </div>
                   <span className="text-xs font-black text-white mt-1.5">
                     {rivalConfig?.name || "Gary"}

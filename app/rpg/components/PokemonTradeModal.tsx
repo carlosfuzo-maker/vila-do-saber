@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { CapturedPokemon, SisterSyncState } from "../rpgTypes";
 import { getPokemonArtworkUrl } from "../data/kantoPokedex";
+import { PokemonImage } from "@/app/components/PokemonImage";
 import { playSound } from "@/lib/soundEffects";
 import confetti from "canvas-confetti";
 import {
@@ -243,11 +244,15 @@ export function PokemonTradeModal({
                             </span>
                           )}
 
-                          <img
-                            src={p.artworkUrl || p.spriteUrl}
-                            alt={p.name}
-                            className="w-12 h-12 object-contain mb-1"
-                          />
+                          <div className="w-12 h-12 flex items-center justify-center mb-1">
+                            <PokemonImage
+                              pokedexId={p.pokedexId}
+                              name={p.name}
+                              emoji={p.emoji}
+                              priorityUrl={p.artworkUrl || p.spriteUrl}
+                              className="w-12 h-12 object-contain"
+                            />
+                          </div>
                           <span className="text-xs font-black text-white leading-tight">
                             {p.name}
                           </span>

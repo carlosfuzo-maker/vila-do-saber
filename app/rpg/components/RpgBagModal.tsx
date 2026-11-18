@@ -725,9 +725,11 @@ export function RpgBagModal({
                   >
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center p-1 border border-white/20">
-                        <img
-                          src={stolen.artworkUrl || stolen.spriteUrl}
-                          alt={stolen.name}
+                        <PokemonImage
+                          pokedexId={stolen.pokedexId}
+                          name={stolen.name}
+                          emoji={stolen.emoji}
+                          priorityUrl={stolen.artworkUrl || stolen.spriteUrl}
                           className="w-10 h-10 object-contain grayscale opacity-60"
                         />
                       </div>

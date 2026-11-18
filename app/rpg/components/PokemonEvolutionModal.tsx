@@ -9,6 +9,7 @@ import {
   getPokemonSpriteUrl,
   getPokemonAnimatedUrl,
 } from "../data/kantoPokedex";
+import { PokemonImage } from "@/app/components/PokemonImage";
 import { playSound } from "@/lib/soundEffects";
 import confetti from "canvas-confetti";
 import { Sparkles, ArrowRight, ShieldCheck, Zap, X } from "lucide-react";
@@ -136,9 +137,11 @@ export function PokemonEvolutionModal({
               <div className="absolute inset-0 rounded-full bg-gradient-to-t from-amber-500/30 via-indigo-500/20 to-transparent blur-xl animate-pulse" />
               <div className="absolute bottom-2 w-40 h-8 rounded-[100%] bg-indigo-900/60 border border-indigo-400/30 blur-xs" />
 
-              <img
-                src={showTargetSprite ? getPokemonArtworkUrl(targetData.pokedexId) : pokemon.artworkUrl || pokemon.spriteUrl}
-                alt="Evoluindo"
+              <PokemonImage
+                pokedexId={showTargetSprite ? targetData.pokedexId : pokemon.pokedexId}
+                name={showTargetSprite ? targetData.name : pokemon.name}
+                emoji={showTargetSprite ? targetData.emoji : pokemon.emoji}
+                priorityUrl={showTargetSprite ? getPokemonArtworkUrl(targetData.pokedexId) : (pokemon.artworkUrl || pokemon.spriteUrl)}
                 className={`w-36 h-36 object-contain filter drop-shadow-[0_0_20px_rgba(251,191,36,0.8)] transition-all duration-300 ${
                   showTargetSprite ? "scale-110 brightness-125" : "scale-95 brightness-90 contrast-150"
                 }`}
@@ -172,11 +175,15 @@ export function PokemonEvolutionModal({
             {/* Before and After display */}
             <div className="flex items-center justify-center gap-4 py-2">
               <div className="flex flex-col items-center">
-                <img
-                  src={pokemon.artworkUrl || pokemon.spriteUrl}
-                  alt={pokemon.name}
-                  className="w-16 h-16 object-contain opacity-70"
-                />
+                <div className="w-16 h-16 flex items-center justify-center">
+                  <PokemonImage
+                    pokedexId={pokemon.pokedexId}
+                    name={pokemon.name}
+                    emoji={pokemon.emoji}
+                    priorityUrl={pokemon.artworkUrl || pokemon.spriteUrl}
+                    className="w-16 h-16 object-contain opacity-70"
+                  />
+                </div>
                 <span className="text-[11px] text-slate-400 font-bold">{pokemon.name}</span>
               </div>
 
@@ -185,11 +192,15 @@ export function PokemonEvolutionModal({
               </div>
 
               <div className="flex flex-col items-center p-2 rounded-2xl bg-amber-400/10 border-2 border-amber-400 shadow-xl">
-                <img
-                  src={getPokemonArtworkUrl(targetData.pokedexId)}
-                  alt={targetData.name}
-                  className="w-24 h-24 object-contain filter drop-shadow-[0_0_15px_rgba(251,191,36,0.6)] animate-bounce"
-                />
+                <div className="w-24 h-24 flex items-center justify-center">
+                  <PokemonImage
+                    pokedexId={targetData.pokedexId}
+                    name={targetData.name}
+                    emoji={targetData.emoji}
+                    priorityUrl={getPokemonArtworkUrl(targetData.pokedexId)}
+                    className="w-24 h-24 object-contain filter drop-shadow-[0_0_15px_rgba(251,191,36,0.6)] animate-bounce"
+                  />
+                </div>
                 <span className="text-xs text-amber-300 font-black mt-1">{targetData.name}</span>
                 <span className="text-[10px] text-indigo-200">{targetData.type}</span>
               </div>

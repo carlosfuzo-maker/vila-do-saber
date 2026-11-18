@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { CapturedPokemon, StudentYear } from "../rpgTypes";
+import { PokemonImage } from "@/app/components/PokemonImage";
 import { playSound } from "@/lib/soundEffects";
 import confetti from "canvas-confetti";
 import {
@@ -186,15 +187,13 @@ export default function RocketRescueModal({
                   currentStep === 3 ? "animate-bounce" : "animate-pulse"
                 }`}
               >
-                {targetPkmn.artworkUrl || targetPkmn.spriteUrl ? (
-                  <img
-                    src={targetPkmn.artworkUrl || targetPkmn.spriteUrl}
-                    alt={targetPkmn.name}
-                    className="w-full h-full object-contain filter drop-shadow-md"
-                  />
-                ) : (
-                  <span>{targetPkmn.emoji}</span>
-                )}
+                <PokemonImage
+                  pokedexId={targetPkmn.pokedexId}
+                  name={targetPkmn.name}
+                  emoji={targetPkmn.emoji}
+                  priorityUrl={targetPkmn.artworkUrl || targetPkmn.spriteUrl}
+                  className="w-full h-full object-contain filter drop-shadow-md"
+                />
               </div>
 
               {/* Cage overlay bars */}
